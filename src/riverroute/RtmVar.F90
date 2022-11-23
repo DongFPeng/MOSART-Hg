@@ -27,6 +27,8 @@ module RtmVar
   integer, public :: nsrest = iundef                           ! Type of run
   logical, public :: brnch_retain_casename = .false.           ! true => allow case name to remain the same for branch run
                                                                ! by default this is not allowed
+  logical, public :: sediflag = .true.                ! sediment model flag
+  logical, public :: heatflag = .false.                ! heat model flag                                                             
   logical, public :: noland = .false.                          ! true => no valid land points -- do NOT run
   character(len=32) , public :: decomp_option                  ! decomp option
   character(len=32) , public :: bypass_routing_option          ! bypass routing model method

@@ -57,6 +57,7 @@
     </desc>
   </entry>
 
+
   <entry id="coupling_period" modify_via_xml="ROF_NCPL" skip_default_entry="true">
     <type>integer</type> 
     <category>mosart</category>

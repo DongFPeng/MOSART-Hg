@@ -11,6 +11,7 @@ module RtmHistFlds
   use shr_kind_mod   , only: r8 => shr_kind_r8
   use RunoffMod      , only : rtmCTL
   use RtmHistFile    , only : RtmHistAddfld, RtmHistPrintflds
+  use RtmVar         , only : sediflag
   use rof_cpl_indices, only : nt_rtm, rtm_tracers  
 
   implicit none
@@ -130,6 +131,37 @@ contains
          avgflag='A', long_name='Actual irrigation (if limited by river storage)', &
          ptr_rof=rtmCTL%qirrig_actual, default='inactive')
 
+    if(sediflag) then
+      call RtmHistAddfld (fname='RIVER_DISCHARGE_OVER_LAND'//'_'//trim(rtm_tracers(3)), units='kg/s',  &
+           avgflag='A', long_name='MOSART river basin flow: '//trim(rtm_tracers(3)), &
+           ptr_rof=rtmCTL%runofflnd_nt3, default='inactive')
+    
+      call RtmHistAddfld (fname='RIVER_DISCHARGE_OVER_LAND'//'_'//trim(rtm_tracers(4)), units='kg/s',  &
+           avgflag='A', long_name='MOSART river basin flow: '//trim(rtm_tracers(4)), &
+           ptr_rof=rtmCTL%runofflnd_nt4, default='inactive')
+    
+      call RtmHistAddfld (fname='RIVER_DISCHARGE_TO_OCEAN'//'_'//trim(rtm_tracers(3)), units='kg/s',  &
+           avgflag='A', long_name='MOSART river discharge into ocean: '//trim(rtm_tracers(3)), &
+           ptr_rof=rtmCTL%runoffocn_nt3, default='inactive')
+    
+      call RtmHistAddfld (fname='RIVER_DISCHARGE_TO_OCEAN'//'_'//trim(rtm_tracers(4)), units='kg/s',  &
+           avgflag='A', long_name='MOSART river discharge into ocean: '//trim(rtm_tracers(4)), &
+           ptr_rof=rtmCTL%runoffocn_nt4, default='inactive')
+           
+      call RtmHistAddfld (fname='STORAGE'//'_'//trim(rtm_tracers(3)), units='kg',  &
+           avgflag='A', long_name='MOSART storage: '//trim(rtm_tracers(3)), &
+           ptr_rof=rtmCTL%volr_nt3, default='inactive')
+    
+      call RtmHistAddfld (fname='STORAGE'//'_'//trim(rtm_tracers(4)), units='kg',  &
+           avgflag='A', long_name='MOSART storage: '//trim(rtm_tracers(4)), &
+           ptr_rof=rtmCTL%volr_nt4, default='inactive')
+    
+      call RtmHistAddfld (fname='QSUR'//'_'//trim(rtm_tracers(3)), units='kg/s',  &
+           avgflag='A', long_name='MOSART sediment yield from hillslope: '//trim(rtm_tracers(3)), &
+           ptr_rof=rtmCTL%qsur_nt3, default='inactive')
+
+    end if
+
     ! Print masterlist of history fields
 
     call RtmHistPrintflds()
@@ -179,6 +211,16 @@ contains
 
     rtmCTL%qgwl_nt1(:)       = rtmCTL%qgwl(:,1)
     rtmCTL%qgwl_nt2(:)       = rtmCTL%qgwl(:,2)
+
+    if(sediflag) then
+        rtmCTL%runofflnd_nt3(:)  = rtmCTL%runofflnd(:,3)
+        rtmCTL%runofflnd_nt4(:)  = rtmCTL%runofflnd(:,4)
+        rtmCTL%runoffocn_nt3(:)  = rtmCTL%runoffocn(:,3)
+        rtmCTL%runoffocn_nt4(:)  = rtmCTL%runoffocn(:,4)
+        rtmCTL%volr_nt3(:)       = rtmCTL%volr(:,3)
+        rtmCTL%volr_nt4(:)       = rtmCTL%volr(:,4)
+        rtmCTL%qsur_nt3(:)       = rtmCTL%qsur(:,3)
+    end if
 
   end subroutine RtmHistFldsSet
 
