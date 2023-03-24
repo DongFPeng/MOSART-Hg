@@ -134,31 +134,31 @@ contains
     if(sediflag) then
       call RtmHistAddfld (fname='RIVER_DISCHARGE_OVER_LAND'//'_'//trim(rtm_tracers(3)), units='kg/s',  &
            avgflag='A', long_name='MOSART river basin flow: '//trim(rtm_tracers(3)), &
-           ptr_rof=rtmCTL%runofflnd_nt3, default='inactive')
+           ptr_rof=rtmCTL%runofflnd_nt3, default='active')
     
       call RtmHistAddfld (fname='RIVER_DISCHARGE_OVER_LAND'//'_'//trim(rtm_tracers(4)), units='kg/s',  &
            avgflag='A', long_name='MOSART river basin flow: '//trim(rtm_tracers(4)), &
-           ptr_rof=rtmCTL%runofflnd_nt4, default='inactive')
+           ptr_rof=rtmCTL%runofflnd_nt4, default='active')
     
       call RtmHistAddfld (fname='RIVER_DISCHARGE_TO_OCEAN'//'_'//trim(rtm_tracers(3)), units='kg/s',  &
            avgflag='A', long_name='MOSART river discharge into ocean: '//trim(rtm_tracers(3)), &
-           ptr_rof=rtmCTL%runoffocn_nt3, default='inactive')
+           ptr_rof=rtmCTL%runoffocn_nt3, default='active')
     
       call RtmHistAddfld (fname='RIVER_DISCHARGE_TO_OCEAN'//'_'//trim(rtm_tracers(4)), units='kg/s',  &
            avgflag='A', long_name='MOSART river discharge into ocean: '//trim(rtm_tracers(4)), &
-           ptr_rof=rtmCTL%runoffocn_nt4, default='inactive')
+           ptr_rof=rtmCTL%runoffocn_nt4, default='active')
            
       call RtmHistAddfld (fname='STORAGE'//'_'//trim(rtm_tracers(3)), units='kg',  &
            avgflag='A', long_name='MOSART storage: '//trim(rtm_tracers(3)), &
-           ptr_rof=rtmCTL%volr_nt3, default='inactive')
+           ptr_rof=rtmCTL%volr_nt3, default='active')
     
       call RtmHistAddfld (fname='STORAGE'//'_'//trim(rtm_tracers(4)), units='kg',  &
            avgflag='A', long_name='MOSART storage: '//trim(rtm_tracers(4)), &
-           ptr_rof=rtmCTL%volr_nt4, default='inactive')
+           ptr_rof=rtmCTL%volr_nt4, default='active')
     
       call RtmHistAddfld (fname='QSUR'//'_'//trim(rtm_tracers(3)), units='kg/s',  &
            avgflag='A', long_name='MOSART sediment yield from hillslope: '//trim(rtm_tracers(3)), &
-           ptr_rof=rtmCTL%qsur_nt3, default='inactive')
+           ptr_rof=rtmCTL%qsur_nt3, default='active')
 
     end if
 

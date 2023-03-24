@@ -561,7 +561,7 @@ contains
     do n = begr,endr
        n2 = n - begr + 1
 
-       rtmCTL%qsur(n,nliq) = x2r_r%rAttr(index_x2r_Flrl_rofsur,n2) * (rtmCTL%area(n)*0.001_r8)
+       rtmCTL%qsur(n,nliq) = x2r_r%rAttr(index_x2r_Flrl_rofsur,n2) * (rtmCTL%area(n)*0.001_r8) !=mm/s*0.001*m2=m3/s
        rtmCTL%qsub(n,nliq) = x2r_r%rAttr(index_x2r_Flrl_rofsub,n2) * (rtmCTL%area(n)*0.001_r8)
        rtmCTL%qgwl(n,nliq) = x2r_r%rAttr(index_x2r_Flrl_rofgwl,n2) * (rtmCTL%area(n)*0.001_r8)
 

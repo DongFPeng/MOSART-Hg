@@ -12,7 +12,7 @@ module RtmMod
   use shr_kind_mod    , only : r8 => shr_kind_r8
   use shr_sys_mod     , only : shr_sys_flush
   use shr_const_mod   , only : SHR_CONST_PI, SHR_CONST_CDAY
-  use rof_cpl_indices , only : nt_rtm, rtm_tracers, KW, DW 
+  use rof_cpl_indices , only : nt_rtm, rtm_tracers, KW, DW, nt_nliq, nt_nice, nt_nmud, nt_nsan
   use RtmSpmd         , only : masterproc, npes, iam, mpicom_rof, ROFID, mastertask, &
                                MPI_REAL8,MPI_INTEGER,MPI_CHARACTER,MPI_LOGICAL,MPI_MAX
   use RtmVar          , only : re, spval, rtmlon, rtmlat, iulog, ice_runoff, &
@@ -243,8 +243,8 @@ contains
     qgwl_runoff_option = 'threshold'
     smat_option = 'opt'
     sediflag = .true.
-    RoutingMethod = KW
-    DLevelH2R = 5
+    RoutingMethod = DW
+    DLevelH2R = 100
     DLevelR = 3
 
     nlfilename_rof = "mosart_in" // trim(inst_suffix)
@@ -1450,7 +1450,7 @@ contains
     enddo
 
     if(sediflag) then
-    do nt=nt_nmud,nt_nsan
+     do nt=nt_nmud,nt_nsan
         do nr = rtmCTL%begr,rtmCTL%endr        
            call UpdateState_hillslope(nr,nt)
            call UpdateState_subnetwork(nr,nt)   
@@ -1461,7 +1461,7 @@ contains
                                  TRunoff%wh(nr,nt)*rtmCTL%area(nr)*TUnit%frac(nr) + &
                                  TRunoff%wt_al(nr,nt) + TRunoff%wr_al(nr,nt))
         enddo
-    enddo
+     enddo
     end if
 
     call t_stopf('mosarti_restart')
@@ -1638,9 +1638,14 @@ contains
     ! data for euler solver, in m3/s here
     do nr = rtmCTL%begr,rtmCTL%endr
     do nt = 1,nt_rtm
-       TRunoff%qsur(nr,nt) = rtmCTL%qsur(nr,nt)
+       TRunoff%qsur(nr,nt) = rtmCTL%qsur(nr,nt) !kg/s for mud, m3/s for liq
        TRunoff%qsub(nr,nt) = rtmCTL%qsub(nr,nt)
        TRunoff%qgwl(nr,nt) = rtmCTL%qgwl(nr,nt)
+       !open(unit=10, file='/data4/home/dpeng/CESM/cesm2.1.3/outputdata/mosart_test1_sediment/run/variables.log')
+                     !write(10,*)  '####'   
+                     !write(10,*)  'nr=', nr
+                     !write(10,*)  'TRunoff%qsur(nr,n_nmud)=', TRunoff%qsur(nr,3)
+                     !write(10,*)  'rtmCTL%qsur(nr,n_nmud)=', rtmCTL%qsur(nr,3)
     enddo
     enddo
 
@@ -2026,6 +2031,14 @@ contains
           ehexch_avg(nr,nt) = ehexch_avg(nr,nt) + TRunoff%ehexch_avg(nr,nt)
           etexch_avg(nr,nt) = etexch_avg(nr,nt) + TRunoff%etexch_avg(nr,nt)
           erexch_avg(nr,nt) = erexch_avg(nr,nt) + TRunoff%erexch_avg(nr,nt)
+
+          !open(unit=10, file='/data4/home/dpeng/CESM/cesm2.1.3/outputdata/mosart_test1_sediment/run/variables.log')
+                     !write(10,*)  '####'   
+                     !write(10,*)  'NSTEPS', Tctl%NSTEPS
+                     !write(10,*)  'nr', nr
+                     !write(10,*)  'flow(nr,nmud) =', flow(nr,nt_nmud)
+                     !write(10,*)  'flow(nr,nsand) =', flow(nr,nt_nsan)          
+                     !write(10,*)  '####'
        enddo
        enddo
 
@@ -2394,6 +2407,7 @@ contains
   type(var_desc_t)   :: vardesc    ! pio variable desc 
   type(io_desc_t)    :: iodesc_dbl ! pio io desc
   type(io_desc_t)    :: iodesc_int ! pio io desc
+  !logical            :: readvar    ! if variable exists or not
   integer, pointer   :: compdof(:) ! computational degrees of freedom for pio 
   integer :: dids(2)               ! variable dimension ids 
   integer :: dsizes(2)             ! variable dimension lengths
