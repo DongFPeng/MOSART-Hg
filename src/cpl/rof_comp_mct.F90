@@ -32,6 +32,7 @@ module rof_comp_mct
                                 index_x2r_Flrl_rofgwl, index_x2r_Flrl_rofsub, &
                                 index_x2r_Flrl_irrig,&
                                 index_x2r_Flrl_rofmud, &
+                                index_x2r_Flrl_rofhg, &
                                 index_r2x_Forr_rofl, index_r2x_Forr_rofi, &
                                 index_r2x_Flrr_flood, &
                                 index_r2x_Flrr_volr, index_r2x_Flrr_volrmch
@@ -515,7 +516,7 @@ contains
     type(mct_aVect), intent(inout) :: x2r_r         
     !
     ! LOCAL VARIABLES
-    integer :: n2, n, nt, begr, endr, nliq, nfrz, nmud, nsan
+    integer :: n2, n, nt, begr, endr, nliq, nfrz, nmud, nsan, nphg
     character(len=32), parameter :: sub = 'rof_import_mct'
     !---------------------------------------------------------------------------
     
@@ -525,6 +526,7 @@ contains
     nfrz = 0
     nmud = 0
     nsan = 0
+    nphg = 0
     do nt = 1,nt_rtm
        if (trim(rtm_tracers(nt)) == 'LIQ') then
           nliq = nt
@@ -537,7 +539,10 @@ contains
        endif
        if (trim(rtm_tracers(nt)) == 'SAN') then
           nsan = nt
-       endif       
+       endif
+       if (trim(rtm_tracers(nt)) == 'PHG') then
+         nphg = nt
+      endif       
     enddo
     if (nliq == 0) then
        write(iulog,*) trim(sub),': ERROR in rtm_tracers LIQ',nliq,rtm_tracers
@@ -555,6 +560,10 @@ contains
        write(iulog,*) trim(sub),': ERROR in rtm_tracers SAN',nsan,rtm_tracers
         call shr_sys_abort()
      endif
+     if (nphg == 0) then
+      write(iulog,*) trim(sub),': ERROR in rtm_tracers PHG',nphg,rtm_tracers
+       call shr_sys_abort()
+    endif
 
     begr = rtmCTL%begr
     endr = rtmCTL%endr
@@ -574,12 +583,15 @@ contains
        rtmCTL%qsur(n,nmud) = 0.0_r8
        rtmCTL%qsur(n,nsan) = 0.0_r8
 
+       rtmCTL%qsur(n,nphg) = 0.0_r8
+
     enddo
 
     if(sediflag) then
 	   do n = begr,endr
          n2 = n - begr + 1
          rtmCTL%qsur(n,nmud) = x2r_r%rAttr(index_x2r_Flrl_rofmud,n2) * (rtmCTL%area(n)) ! kg/m2/s --> kg/s for sediment
+         rtmCTL%qsur(n,nphg) = x2r_r%rAttr(index_x2r_Flrl_rofhg,n2) * (rtmCTL%area(n)) ! g/m2/s --> g/s for sediment-hg
          rtmCTL%qsur(n,nsan) = 0.0_r8
       enddo
 	 end if

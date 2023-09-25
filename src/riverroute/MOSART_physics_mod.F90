@@ -17,7 +17,7 @@ MODULE MOSART_physics_mod
   use RunoffMod     , only : Tctl, TUnit, TRunoff, TPara, rtmCTL, &
                              SMatP_eroutUp, avsrc_eroutUp, avdst_eroutUp, SMatP_dnstrm, avsrc_dnstrm, avdst_dnstrm
   use RtmSpmd       , only : masterproc, mpicom_rof
-  use rof_cpl_indices, only : nt_rtm, rtm_tracers, nt_nliq, nt_nice, nt_nmud, nt_nsan, KW, DW
+  use rof_cpl_indices, only : nt_rtm, rtm_tracers, nt_nliq, nt_nice, nt_nmud, nt_nsan, nt_nphg, KW, DW
   use perf_mod, only: t_startf, t_stopf
   use mct_mod  
   use MOSART_BGC_type, only : TSedi
@@ -52,7 +52,7 @@ MODULE MOSART_physics_mod
     
     integer :: iunit, m, k, unitUp, cnt, ier   !local index
     real(r8) :: temp_erout, localDeltaT, temp_haout, temp_Tt, temp_Tr, temp_T, temp_ha
-    real(r8) :: mud_erout, san_erout, temp_ehexch, temp_etexch, temp_erexch
+    real(r8) :: mud_erout, san_erout, temp_ehexch, temp_etexch, temp_erexch, phg_erout
     real(r8) :: negchan, numSubSteps
     real(r8) :: tmp1, tmp2
     !------------------
@@ -85,13 +85,18 @@ MODULE MOSART_physics_mod
          if(TUnit%mask(iunit) > 0) then
             call hillslopeSediment(iunit, Tctl%DeltaT) !cal mud in hlillslope routing
 
-            TRunoff%wh(iunit,nt_nmud) = TRunoff%wh(iunit,nt_nmud) + TRunoff%dwh(iunit,nt_nmud) * Tctl%DeltaT !test
+            TRunoff%wh(iunit,nt_nmud) = TRunoff%wh(iunit,nt_nmud) + TRunoff%dwh(iunit,nt_nmud) * Tctl%DeltaT 
             TRunoff%etin(iunit,nt_nmud) = (-TRunoff%ehout(iunit,nt_nmud) + TRunoff%qsub(iunit,nt_nmud)) * TUnit%area(iunit) * TUnit%frac(iunit)
             TRunoff%ehexch_avg(iunit,nt_nmud) = 0._r8
+
+            TRunoff%wh(iunit,nt_nphg) = TRunoff%wh(iunit,nt_nphg) + TRunoff%dwh(iunit,nt_nphg) * Tctl%DeltaT 
+            TRunoff%etin(iunit,nt_nphg) = (-TRunoff%ehout(iunit,nt_nphg) + TRunoff%qsub(iunit,nt_nphg)) * TUnit%area(iunit) * TUnit%frac(iunit)
+            TRunoff%ehexch_avg(iunit,nt_nphg) = 0._r8
   
             !! note: only when the soil erosion subroutine is turned on, the ehexchange item is meaningful, otherwise always zero
             !call soilErosion(iunit, Tctl%DeltaT)
             TRunoff%ehexch_avg(iunit,nt_nmud) = TRunoff%etin(iunit,nt_nmud)
+            TRunoff%ehexch_avg(iunit,nt_nphg) = TRunoff%etin(iunit,nt_nphg)
          endif
          !open(unit=10, file='/data4/home/dpeng/CESM/cesm2.1.3/outputdata/mosart_test1_sediment/run/variables.log')
                      !write(10,*)  '####'   
@@ -162,25 +167,33 @@ MODULE MOSART_physics_mod
                 call subnetworkSediment(iunit,localDeltaT)
                !wt
                 TRunoff%wt(iunit,nt_nmud) = TRunoff%wt(iunit,nt_nmud) + TRunoff%dwt(iunit,nt_nmud) * localDeltaT
+                TRunoff%wt(iunit,nt_nphg) = TRunoff%wt(iunit,nt_nphg) + TRunoff%dwt(iunit,nt_nphg) * localDeltaT
                 TRunoff%wt(iunit,nt_nsan) = TRunoff%wt(iunit,nt_nsan) + TRunoff%dwt(iunit,nt_nsan) * localDeltaT
                !wt_al
-                !TRunoff%wt_al(iunit,nt_nmud) = TRunoff%wt_al(iunit,nt_nmud) + TRunoff%dwt_al(iunit,nt_nmud) * localDeltaT
-                !TRunoff%wt_al(iunit,nt_nsan) = TRunoff%wt_al(iunit,nt_nsan) + TRunoff%dwt_al(iunit,nt_nsan) * localDeltaT
+                TRunoff%wt_al(iunit,nt_nmud) = TRunoff%wt_al(iunit,nt_nmud) + TRunoff%dwt_al(iunit,nt_nmud) * localDeltaT
+                TRunoff%wt_al(iunit,nt_nphg) = TRunoff%wt_al(iunit,nt_nmud) + TRunoff%dwt_al(iunit,nt_nmud) * localDeltaT
+                TRunoff%wt_al(iunit,nt_nsan) = TRunoff%wt_al(iunit,nt_nsan) + TRunoff%dwt_al(iunit,nt_nsan) * localDeltaT
                 !update conc_t
                 call UpdateState_subnetwork(iunit,nt_nmud)
+                call UpdateState_subnetwork(iunit,nt_nphg)
                 call UpdateState_subnetwork(iunit,nt_nsan)
                 ! cal erlateral and etexchange
                 TRunoff%erlateral(iunit,nt_nmud) = TRunoff%erlateral(iunit,nt_nmud) - TRunoff%etout(iunit,nt_nmud)
+                TRunoff%erlateral(iunit,nt_nphg) = TRunoff%erlateral(iunit,nt_nphg) - TRunoff%etout(iunit,nt_nphg)
                 TRunoff%erlateral(iunit,nt_nsan) = TRunoff%erlateral(iunit,nt_nsan) - TRunoff%etout(iunit,nt_nsan)
                 TRunoff%etexchange(iunit,nt_nmud) = TRunoff%etexchange(iunit,nt_nmud) + TSedi%ermb_t(iunit)
+                TRunoff%etexchange(iunit,nt_nphg) = TRunoff%etexchange(iunit,nt_nphg) + TSedi%erhb_t(iunit)
                 TRunoff%etexchange(iunit,nt_nsan) = TRunoff%etexchange(iunit,nt_nsan) + TSedi%ersb_t(iunit)
              end do ! numDT_t
              ! update erlateral and etexchange and etexch_avg
              TRunoff%erlateral(iunit,nt_nmud) = TRunoff%erlateral(iunit,nt_nmud) / TUnit%numDT_t(iunit)
+             TRunoff%erlateral(iunit,nt_nphg) = TRunoff%erlateral(iunit,nt_nphg) / TUnit%numDT_t(iunit)
              TRunoff%erlateral(iunit,nt_nsan) = TRunoff%erlateral(iunit,nt_nsan) / TUnit%numDT_t(iunit)
              TRunoff%etexchange(iunit,nt_nmud) = TRunoff%etexchange(iunit,nt_nmud) / TUnit%numDT_t(iunit)
+             TRunoff%etexchange(iunit,nt_nphg) = TRunoff%etexchange(iunit,nt_nphg) / TUnit%numDT_t(iunit)
              TRunoff%etexchange(iunit,nt_nsan) = TRunoff%etexchange(iunit,nt_nsan) / TUnit%numDT_t(iunit)
              TRunoff%etexch_avg(iunit,nt_nmud) = TRunoff%etexch_avg(iunit,nt_nmud) + TRunoff%etexchange(iunit,nt_nmud)
+             TRunoff%etexch_avg(iunit,nt_nphg) = TRunoff%etexch_avg(iunit,nt_nphg) + TRunoff%etexchange(iunit,nt_nphg)
              TRunoff%etexch_avg(iunit,nt_nsan) = TRunoff%etexch_avg(iunit,nt_nsan) + TRunoff%etexchange(iunit,nt_nsan)
           endif
        end do ! iunit
@@ -377,6 +390,7 @@ MODULE MOSART_physics_mod
           if(TUnit%mask(iunit) > 0) then
              mud_erout = 0._r8
              san_erout = 0._r8
+             phg_erout = 0._r8
              if(Tctl%RoutingMethod==KW) then  ! local stepping method only applies for the kinematic wave routing method
                  numSubSteps = TUnit%numDT_r(iunit)
                  localDeltaT = Tctl%DeltaT/Tctl%DLevelH2R/numSubSteps
@@ -384,17 +398,22 @@ MODULE MOSART_physics_mod
                     call mainchannelSediment(iunit,localDeltaT)
                     ! wr
                     TRunoff%wr(iunit,nt_nmud) = TRunoff%wr(iunit,nt_nmud) + TRunoff%dwr(iunit,nt_nmud) * localDeltaT
+                    TRunoff%wr(iunit,nt_nphg) = TRunoff%wr(iunit,nt_nphg) + TRunoff%dwr(iunit,nt_nphg) * localDeltaT
                     TRunoff%wr(iunit,nt_nsan) = TRunoff%wr(iunit,nt_nsan) + TRunoff%dwr(iunit,nt_nsan) * localDeltaT
                     !wr_al
                     TRunoff%wr_al(iunit,nt_nmud) = TRunoff%wr_al(iunit,nt_nmud) + TRunoff%dwr_al(iunit,nt_nmud) * localDeltaT
+                    TRunoff%wr_al(iunit,nt_nphg) = TRunoff%wr_al(iunit,nt_nphg) + TRunoff%dwr_al(iunit,nt_nphg) * localDeltaT
                     TRunoff%wr_al(iunit,nt_nsan) = TRunoff%wr_al(iunit,nt_nsan) + TRunoff%dwr_al(iunit,nt_nsan) * localDeltaT 
                     ! update conc_r
                     call UpdateState_mainchannel(iunit,nt_nmud)
+                    call UpdateState_mainchannel(iunit,nt_nphg)
                     call UpdateState_mainchannel(iunit,nt_nsan)
                     mud_erout = mud_erout + TRunoff%erout(iunit,nt_nmud) ! erout here might be inflow to some downstream subbasin, so treat it differently than erlateral
+                    phg_erout = phg_erout + TRunoff%erout(iunit,nt_nphg)
                     san_erout = san_erout + TRunoff%erout(iunit,nt_nsan) ! erout here might be inflow to some downstream subbasin, so treat it differently than erlateral
 
                     TRunoff%erexchange(iunit,nt_nmud) = TRunoff%erexchange(iunit,nt_nmud) + TSedi%ermb_r(iunit)
+                    TRunoff%erexchange(iunit,nt_nphg) = TRunoff%erexchange(iunit,nt_nphg) + TSedi%erhb_r(iunit)
                     TRunoff%erexchange(iunit,nt_nsan) = TRunoff%erexchange(iunit,nt_nsan) + TSedi%ersb_r(iunit)
 
                  end do
@@ -405,14 +424,18 @@ MODULE MOSART_physics_mod
                  do k=1,numSubSteps
                     call Leapfrog_sed(iunit,localDeltaT)  ! note updating wr and other states are done in Leapfrog already
                     mud_erout = mud_erout + TRunoff%erout(iunit,nt_nmud) ! erout here might be inflow to some downstream subbasin, so treat it differently than erlateral
+                    phg_erout = phg_erout + TRunoff%erout(iunit,nt_nmud)
                     san_erout = san_erout + TRunoff%erout(iunit,nt_nsan) ! erout here might be inflow to some downstream subbasin, so treat it differently than erlateral
                     TRunoff%erexchange(iunit,nt_nmud) = TRunoff%erexchange(iunit,nt_nmud) + TSedi%ermb_r(iunit)
+                    TRunoff%erexchange(iunit,nt_nphg) = TRunoff%erexchange(iunit,nt_nphg) + TSedi%erhb_r(iunit)
                     TRunoff%erexchange(iunit,nt_nsan) = TRunoff%erexchange(iunit,nt_nsan) + TSedi%ersb_r(iunit)
                  end do
              end if
 
              mud_erout = mud_erout / numSubSteps
              TRunoff%erout(iunit,nt_nmud) = mud_erout
+             phg_erout = phg_erout / numSubSteps
+             TRunoff%erout(iunit,nt_nphg) = phg_erout
              san_erout = san_erout / numSubSteps
              TRunoff%erout(iunit,nt_nsan) = san_erout
              
@@ -420,6 +443,10 @@ MODULE MOSART_physics_mod
              TRunoff%flow(iunit,nt_nmud) = TRunoff%flow(iunit,nt_nmud) - TRunoff%erout(iunit,nt_nmud)
              TRunoff%erexchange(iunit,nt_nmud) = TRunoff%erexchange(iunit,nt_nmud) / numSubSteps
              TRunoff%erexch_avg(iunit,nt_nmud) = TRunoff%erexch_avg(iunit,nt_nmud) + TRunoff%erexchange(iunit,nt_nmud)
+
+             TRunoff%flow(iunit,nt_nphg) = TRunoff%flow(iunit,nt_nphg) - TRunoff%erout(iunit,nt_nphg)
+             TRunoff%erexchange(iunit,nt_nphg) = TRunoff%erexchange(iunit,nt_nphg) / numSubSteps
+             TRunoff%erexch_avg(iunit,nt_nphg) = TRunoff%erexch_avg(iunit,nt_nphg) + TRunoff%erexchange(iunit,nt_nphg)
 
              !TRunoff%eroup_lagf(iunit,nt_nsan) = TRunoff%eroup_lagf(iunit,nt_nsan) - TRunoff%erout(iunit,nt_nsan)
              TRunoff%flow(iunit,nt_nsan) = TRunoff%flow(iunit,nt_nsan) - TRunoff%erout(iunit,nt_nsan)
@@ -1158,12 +1185,15 @@ MODULE MOSART_physics_mod
     integer, intent(in) :: iunit_    !
     real(r8), intent(in) :: deltaT_ ! 
 
-    real(r8) :: wrtemp_san, wrtemp_mud,k1_san,k1_mud,k2_san,k2_mud
+    real(r8) :: wrtemp_san, wrtemp_mud, wrtemp_phg ,k1_san,k1_mud, k1_phg, k2_san,k2_mud, k2_phg
     real(r8) :: erout1_mud, erout2_mud
+    real(r8) :: erout1_phg, erout2_phg
     real(r8) :: erout1_san, erout2_san
-    real(r8) :: wr_al_temp_san, wr_al_temp_mud,k1_al_san,k1_al_mud,k2_al_san,k2_al_mud
-    real(r8) :: k1_ersb,k1_ermb,k2_ersb,k2_ermb
+    real(r8) :: wr_al_temp_san, wr_al_temp_mud, wr_al_temp_phg,k1_al_san,k1_al_mud, k1_al_phg, k2_al_san,k2_al_mud, k2_al_phg
+    real(r8) :: k1_ersb,k1_ermb,k2_ersb,k2_ermb, k1_erhb, k2_erhb
     
+    wrtemp_phg = TRunoff%wr(iunit_,nt_nphg)
+    wr_al_temp_phg = TRunoff%wr_al(iunit_,nt_nphg)
     wrtemp_mud = TRunoff%wr(iunit_,nt_nmud)
     wr_al_temp_mud = TRunoff%wr_al(iunit_,nt_nmud)
     wrtemp_san = TRunoff%wr(iunit_,nt_nsan)
@@ -1171,11 +1201,16 @@ MODULE MOSART_physics_mod
 
     call mainchannelSediment(iunit_,deltaT_)
     erout1_mud = TRunoff%erout(iunit_,nt_nmud)
+    erout1_phg = TRunoff%erout(iunit_,nt_nphg)
     k1_ermb = TSedi%ermb_r(iunit_)
+    k1_erhb = TSedi%erhb_r(iunit_)
     k1_mud = TRunoff%dwr(iunit_,nt_nmud)
+    k1_phg = TRunoff%dwr(iunit_,nt_nphg)
     TRunoff%wr(iunit_,nt_nmud) = TRunoff%wr(iunit_,nt_nmud) + k1_mud * deltaT_ * 0.5_r8
+    TRunoff%wr(iunit_,nt_nphg) = TRunoff%wr(iunit_,nt_nphg) + k1_phg * deltaT_ * 0.5_r8
     ! update conc_r
-    call UpdateState_mainchannel(iunit_,nt_nmud)        
+    call UpdateState_mainchannel(iunit_,nt_nmud)
+    call UpdateState_mainchannel(iunit_,nt_nphg)        
     erout1_san = TRunoff%erout(iunit_,nt_nsan)
     k1_ersb = TSedi%ersb_r(iunit_)
     k1_san = TRunoff%dwr(iunit_,nt_nsan)
@@ -1185,18 +1220,27 @@ MODULE MOSART_physics_mod
 
     k1_al_mud = TRunoff%dwr_al(iunit_,nt_nmud)
     TRunoff%wr_al(iunit_,nt_nmud) = TRunoff%wr_al(iunit_,nt_nmud) + k1_al_mud * deltaT_ * 0.5_r8
+    k1_al_phg = TRunoff%dwr_al(iunit_,nt_nphg)
+    TRunoff%wr_al(iunit_,nt_nphg) = TRunoff%wr_al(iunit_,nt_nphg) + k1_al_phg * deltaT_ * 0.5_r8
+    
     k1_al_san = TRunoff%dwr_al(iunit_,nt_nsan)
     TRunoff%wr_al(iunit_,nt_nsan) = TRunoff%wr_al(iunit_,nt_nsan) + k1_al_san * deltaT_ * 0.5_r8
     
     
     call mainchannelSediment(iunit_,deltaT_)    
     erout2_mud = TRunoff%erout(iunit_,nt_nmud)
+    erout2_phg = TRunoff%erout(iunit_,nt_nphg)
     k2_ermb = TSedi%ermb_r(iunit_)
+    k2_erhb = TSedi%erhb_r(iunit_)
     k2_mud = TRunoff%dwr(iunit_,nt_nmud)
+    k2_phg = TRunoff%dwr(iunit_,nt_nphg)
     TRunoff%wr(iunit_,nt_nmud) = wrtemp_mud + (k1_mud * 0.75_r8 + k2_mud * 0.25_r8) * deltaT_
     TRunoff%erout(iunit_,nt_nmud) = erout1_mud * 0.75_r8 + erout2_mud * 0.25_r8
+    TRunoff%wr(iunit_,nt_nphg) = wrtemp_phg + (k1_phg * 0.75_r8 + k2_phg * 0.25_r8) * deltaT_
+    TRunoff%erout(iunit_,nt_nphg) = erout1_phg * 0.75_r8 + erout2_phg * 0.25_r8
     ! update conc_r
-    call UpdateState_mainchannel(iunit_,nt_nmud)    
+    call UpdateState_mainchannel(iunit_,nt_nmud)  
+    call UpdateState_mainchannel(iunit_,nt_nphg)    
     erout2_san = TRunoff%erout(iunit_,nt_nsan)
     k2_ersb = TSedi%ersb_r(iunit_)
     k2_san = TRunoff%dwr(iunit_,nt_nsan)
@@ -1207,9 +1251,12 @@ MODULE MOSART_physics_mod
 
     TSedi%ersb_r(iunit_) = k1_ersb*0.75_r8 + k2_ersb*0.25_r8
     TSedi%ermb_r(iunit_) = k1_ermb*0.75_r8 + k2_ermb*0.25_r8
+    TSedi%erhb_r(iunit_) = k1_erhb*0.75_r8 + k2_erhb*0.25_r8
 
     k2_al_mud = TRunoff%dwr_al(iunit_,nt_nmud)
     TRunoff%wr_al(iunit_,nt_nmud) = wr_al_temp_mud + (k1_al_mud * 0.75_r8 + k2_al_mud * 0.25_r8) * deltaT_
+    k2_al_phg = TRunoff%dwr_al(iunit_,nt_nphg)
+    TRunoff%wr_al(iunit_,nt_nphg) = wr_al_temp_phg + (k1_al_phg * 0.75_r8 + k2_al_phg * 0.25_r8) * deltaT_
     k2_al_san = TRunoff%dwr_al(iunit_,nt_nsan)
     TRunoff%wr_al(iunit_,nt_nsan) = wr_al_temp_san + (k1_al_san * 0.75_r8 + k2_al_san * 0.25_r8) * deltaT_
 

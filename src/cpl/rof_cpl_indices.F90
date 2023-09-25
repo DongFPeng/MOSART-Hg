@@ -30,15 +30,17 @@ module rof_cpl_indices
   integer, public :: index_x2r_Flrl_rofi  = 0   ! lnd->rof ice runoff forcing from land
   integer, public :: index_x2r_Flrl_irrig  = 0 ! lnd->rof fraction of volr to be removed for irrigation
   integer, public :: index_x2r_Flrl_rofmud = 0  ! lnd->rof input suspended sediment flux from soil erosion
+  integer, public :: index_x2r_Flrl_rofhg = 0  ! lnd->rof input suspended sediment-hg flux from soil erosion
   integer, public :: nflds_x2r = 0
 
   !TODO - nt_rtm and rtm_tracers need to be removed and set by access to the index array
-  integer, parameter, public :: nt_rtm = 4    ! number of tracers
-  character(len=3), parameter, public :: rtm_tracers(nt_rtm) =  (/'LIQ','ICE','MUD','SAN'/)
+  integer, parameter, public :: nt_rtm = 5    ! number of tracers
+  character(len=3), parameter, public :: rtm_tracers(nt_rtm) =  (/'LIQ','ICE','MUD','SAN','PHG'/)
   integer, parameter, public :: nt_nliq = 1    ! number of tracers
   integer, parameter, public :: nt_nice = 2    ! number of tracers
   integer, parameter, public :: nt_nmud = 3    ! number of tracers
   integer, parameter, public :: nt_nsan = 4    ! number of tracers
+  integer, parameter, public :: nt_nphg = 5    ! number of tracers
 
     !Routing methods used for the main-channel
   integer, parameter, public :: KW = 1         ! kinematic wave routing method
@@ -96,6 +98,7 @@ contains
     index_x2r_Flrl_rofi   = mct_avect_indexra(avtmp,'Flrl_rofi')
     index_x2r_Flrl_irrig = mct_avect_indexra(avtmp,'Flrl_irrig')
     index_x2r_Flrl_rofmud = mct_avect_indexra(avtmp,'Flrl_rofmud')
+    index_x2r_Flrl_rofhg = mct_avect_indexra(avtmp,'Flrl_rofhg')
 
     nflds_x2r = mct_avect_nRattr(avtmp)
 

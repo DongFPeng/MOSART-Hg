@@ -39,7 +39,7 @@ module RtmMod
                                SMatP_dnstrm, avsrc_dnstrm, avdst_dnstrm, &
                                SMatP_direct, avsrc_direct, avdst_direct, &
                                SMatP_eroutUp, avsrc_eroutUp, avdst_eroutUp
-  use rof_cpl_indices, only : nt_rtm, rtm_tracers, nt_nliq, nt_nice, nt_nmud, nt_nsan
+  use rof_cpl_indices, only : nt_rtm, rtm_tracers, nt_nliq, nt_nice, nt_nmud, nt_nsan, nt_nphg
   use MOSART_physics_mod, only : Euler
   use MOSART_physics_mod, only : updatestate_hillslope, updatestate_subnetwork, &
                                  updatestate_mainchannel
@@ -1450,7 +1450,7 @@ contains
     enddo
 
     if(sediflag) then
-     do nt=nt_nmud,nt_nsan
+     do nt=nt_nmud,nt_nsan,nt_nphg
         do nr = rtmCTL%begr,rtmCTL%endr        
            call UpdateState_hillslope(nr,nt)
            call UpdateState_subnetwork(nr,nt)   

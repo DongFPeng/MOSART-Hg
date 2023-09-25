@@ -62,6 +62,11 @@ module MOSART_BGC_type
         real(r8), pointer :: ermb_t(:)      ! mud-sediment erosion @ bank, [kg/s]
         real(r8), pointer :: sem_t(:)       ! mud-sediment settled to bed zone, [kg/s]
         real(r8), pointer :: meout_t(:)     ! mud-sediment discharge out of local channel, [kg/s]
+        real(r8), pointer :: erh_t(:)       ! phg-sediment erosion, [g/s]
+        real(r8), pointer :: erhal_t(:)     ! phg-sediment erosion @ active layer, [g/s]
+        real(r8), pointer :: erhb_t(:)      ! phg-sediment erosion @ bank, [g/s]
+        real(r8), pointer :: seh_t(:)       ! phg-sediment settled to bed zone, [g/s]
+        real(r8), pointer :: heout_t(:)     ! phg-sediment discharge out of local channel, [g/s]
         real(r8), pointer :: erb_t(:)       ! total-sediment erosion @ bank, [kg/s]
 
         ! main channel
@@ -77,6 +82,11 @@ module MOSART_BGC_type
         real(r8), pointer :: ermb_r(:)      ! mud-sediment erosion @ bank, [kg/s]
         real(r8), pointer :: sem_r(:)       ! mud-sediment settled to bed zone, [kg/s]
         real(r8), pointer :: meout_r(:)     ! mud-sediment discharge out of local channel, [kg/s]
+        real(r8), pointer :: erh_r(:)       ! phg-sediment erosion, [g/s]
+        real(r8), pointer :: erhal_r(:)     ! phg-sediment erosion @ active layer, [g/s]
+        real(r8), pointer :: erhb_r(:)      ! phg-sediment erosion @ bank, [g/s]
+        real(r8), pointer :: seh_r(:)       ! phg-sediment settled to bed zone, [g/s]
+        real(r8), pointer :: heout_r(:)     ! phg-sediment discharge out of local channel, [g/s]
         real(r8), pointer :: erb_r(:)       ! total-sediment erosion @ bank, [kg/s]
 
     end type TstatusFlux_sedi
@@ -133,6 +143,10 @@ module MOSART_BGC_type
              TSedi%ermb_t(begr:endr),      &
              TSedi%sem_t(begr:endr),       &
              TSedi%Ssal_r(begr:endr),       &
+             TSedi%erh_t(begr:endr),       &
+             TSedi%erhal_t(begr:endr),     &
+             TSedi%erhb_t(begr:endr),      &
+             TSedi%seh_t(begr:endr),       &
              TSedi%Smal_r(begr:endr),       &
              TSedi%ers_r(begr:endr),       &
              TSedi%ersal_r(begr:endr),     &
@@ -142,6 +156,10 @@ module MOSART_BGC_type
              TSedi%ermal_r(begr:endr),     &
              TSedi%ermb_r(begr:endr),      &
              TSedi%sem_r(begr:endr),       &
+             TSedi%erh_r(begr:endr),       &
+             TSedi%erhal_r(begr:endr),     &
+             TSedi%erhb_r(begr:endr),      &
+             TSedi%seh_r(begr:endr),       &
              TSedi_para%u_f(begr:endr),    &
              !TSedi_para%d50(begr:endr),    &
              stat=ier)
@@ -160,6 +178,10 @@ module MOSART_BGC_type
     TSedi%ermal_t = 0._r8
     TSedi%ermb_t = 0._r8
     TSedi%sem_t = 0._r8
+    TSedi%erh_t = 0._r8
+    TSedi%erhal_t = 0._r8
+    TSedi%erhb_t = 0._r8
+    TSedi%seh_t = 0._r8
     TSedi%Ssal_r = 0._r8
     TSedi%Smal_r = 0._r8
     TSedi%ers_r = 0._r8
@@ -170,6 +192,10 @@ module MOSART_BGC_type
     TSedi%ermal_r = 0._r8
     TSedi%ermb_r = 0._r8
     TSedi%sem_r = 0._r8
+    TSedi%erh_r = 0._r8
+    TSedi%erhal_r = 0._r8
+    TSedi%erhb_r = 0._r8
+    TSedi%seh_r = 0._r8
     !TSedi_para%d50 = 0._r8
     TSedi_para%u_f = 0._r8
     do iunit = begr, endr

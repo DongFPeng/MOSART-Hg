@@ -139,6 +139,10 @@ contains
       call RtmHistAddfld (fname='RIVER_DISCHARGE_OVER_LAND'//'_'//trim(rtm_tracers(4)), units='kg/s',  &
            avgflag='A', long_name='MOSART river basin flow: '//trim(rtm_tracers(4)), &
            ptr_rof=rtmCTL%runofflnd_nt4, default='active')
+
+     call RtmHistAddfld (fname='RIVER_DISCHARGE_OVER_LAND'//'_'//trim(rtm_tracers(5)), units='g/s',  &
+           avgflag='A', long_name='MOSART river basin flow: '//trim(rtm_tracers(5)), &
+           ptr_rof=rtmCTL%runofflnd_nt5, default='active')
     
       call RtmHistAddfld (fname='RIVER_DISCHARGE_TO_OCEAN'//'_'//trim(rtm_tracers(3)), units='kg/s',  &
            avgflag='A', long_name='MOSART river discharge into ocean: '//trim(rtm_tracers(3)), &
@@ -147,6 +151,10 @@ contains
       call RtmHistAddfld (fname='RIVER_DISCHARGE_TO_OCEAN'//'_'//trim(rtm_tracers(4)), units='kg/s',  &
            avgflag='A', long_name='MOSART river discharge into ocean: '//trim(rtm_tracers(4)), &
            ptr_rof=rtmCTL%runoffocn_nt4, default='active')
+
+      call RtmHistAddfld (fname='RIVER_DISCHARGE_TO_OCEAN'//'_'//trim(rtm_tracers(5)), units='g/s',  &
+           avgflag='A', long_name='MOSART river discharge into ocean: '//trim(rtm_tracers(5)), &
+           ptr_rof=rtmCTL%runoffocn_nt5, default='active')
            
       call RtmHistAddfld (fname='STORAGE'//'_'//trim(rtm_tracers(3)), units='kg',  &
            avgflag='A', long_name='MOSART storage: '//trim(rtm_tracers(3)), &
@@ -155,10 +163,18 @@ contains
       call RtmHistAddfld (fname='STORAGE'//'_'//trim(rtm_tracers(4)), units='kg',  &
            avgflag='A', long_name='MOSART storage: '//trim(rtm_tracers(4)), &
            ptr_rof=rtmCTL%volr_nt4, default='active')
+
+      call RtmHistAddfld (fname='STORAGE'//'_'//trim(rtm_tracers(5)), units='g',  &
+           avgflag='A', long_name='MOSART storage: '//trim(rtm_tracers(5)), &
+           ptr_rof=rtmCTL%volr_nt5, default='active')
     
       call RtmHistAddfld (fname='QSUR'//'_'//trim(rtm_tracers(3)), units='kg/s',  &
            avgflag='A', long_name='MOSART sediment yield from hillslope: '//trim(rtm_tracers(3)), &
            ptr_rof=rtmCTL%qsur_nt3, default='active')
+
+      call RtmHistAddfld (fname='QSUR'//'_'//trim(rtm_tracers(5)), units='g/s',  &
+           avgflag='A', long_name='MOSART phg yield from hillslope: '//trim(rtm_tracers(5)), &
+           ptr_rof=rtmCTL%qsur_nt5, default='active')
 
     end if
 
@@ -215,11 +231,15 @@ contains
     if(sediflag) then
         rtmCTL%runofflnd_nt3(:)  = rtmCTL%runofflnd(:,3)
         rtmCTL%runofflnd_nt4(:)  = rtmCTL%runofflnd(:,4)
+        rtmCTL%runofflnd_nt5(:)  = rtmCTL%runofflnd(:,5)
         rtmCTL%runoffocn_nt3(:)  = rtmCTL%runoffocn(:,3)
         rtmCTL%runoffocn_nt4(:)  = rtmCTL%runoffocn(:,4)
+        rtmCTL%runoffocn_nt5(:)  = rtmCTL%runoffocn(:,5)
         rtmCTL%volr_nt3(:)       = rtmCTL%volr(:,3)
         rtmCTL%volr_nt4(:)       = rtmCTL%volr(:,4)
+        rtmCTL%volr_nt5(:)       = rtmCTL%volr(:,5)
         rtmCTL%qsur_nt3(:)       = rtmCTL%qsur(:,3)
+        rtmCTL%qsur_nt5(:)       = rtmCTL%qsur(:,5)
     end if
 
   end subroutine RtmHistFldsSet
