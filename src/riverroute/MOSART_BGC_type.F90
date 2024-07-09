@@ -21,7 +21,7 @@ module MOSART_BGC_type
   use shr_kind_mod  , only : r8 => shr_kind_r8, SHR_KIND_CL
   use shr_const_mod , only : denh2o => SHR_CONST_RHOFW, denice => SHR_CONST_RHOICE, grav => SHR_CONST_G, SHR_CONST_REARTH, SHR_CONST_PI
   use shr_sys_mod   , only : shr_sys_flush, shr_sys_abort
-  !use MOSART_RES_type  , only : Tres_ctl, Tres_para, Tres
+  use MOSART_RES_type  , only : Tres_ctl, Tres_para, Tres
   use netcdf
   use pio
 
@@ -52,6 +52,7 @@ module MOSART_BGC_type
         ! subnetwork channel
         real(r8), pointer :: Ssal_t(:)      ! sand-sediment storage in active layer, [kg]
         real(r8), pointer :: Smal_t(:)      ! mudd-sediment storage in active layer, [kg]
+        real(r8), pointer :: Shal_t(:)      ! phg-sediment storage in active layer, [kg]
         real(r8), pointer :: ers_t(:)       ! sand-sediment erosion, [kg/s]
         real(r8), pointer :: ersal_t(:)     ! sand-sediment erosion @ active layer, [kg/s]
         real(r8), pointer :: ersb_t(:)      ! sand-sediment erosion @ bank, [kg/s]
@@ -72,6 +73,7 @@ module MOSART_BGC_type
         ! main channel
         real(r8), pointer :: Ssal_r(:)      ! sand-sediment storage in active layer, [kg]
         real(r8), pointer :: Smal_r(:)      ! mudd-sediment storage in active layer, [kg]
+        real(r8), pointer :: Shal_r(:)      ! phg-sediment storage in active layer, [kg]
         real(r8), pointer :: ers_r(:)       ! sand-sediment erosion, [kg/s]
         real(r8), pointer :: ersal_r(:)     ! sand-sediment erosion @ active layer, [kg/s]
         real(r8), pointer :: ersb_r(:)      ! sand-sediment erosion @ bank, [kg/s]
@@ -134,6 +136,7 @@ module MOSART_BGC_type
 
     allocate(TSedi%Ssal_t(begr:endr),       &
              TSedi%Smal_t(begr:endr),       &
+             TSedi%Shal_t(begr:endr),       &
              TSedi%ers_t(begr:endr),       &
              TSedi%ersal_t(begr:endr),     &
              TSedi%ersb_t(begr:endr),      &
@@ -161,7 +164,7 @@ module MOSART_BGC_type
              TSedi%erhb_r(begr:endr),      &
              TSedi%seh_r(begr:endr),       &
              TSedi_para%u_f(begr:endr),    &
-             !TSedi_para%d50(begr:endr),    &
+             TSedi_para%d50(begr:endr),    &
              stat=ier)
     if (ier /= 0) then
        write(iulog,*)'Rtmini ERROR allocation of sediment local flux/status arrays'
@@ -170,6 +173,7 @@ module MOSART_BGC_type
 
     TSedi%Ssal_t = 0._r8
     TSedi%Smal_t = 0._r8
+    TSedi%Shal_t = 0._r8
     TSedi%ers_t = 0._r8
     TSedi%ersal_t = 0._r8
     TSedi%ersb_t = 0._r8
@@ -196,7 +200,7 @@ module MOSART_BGC_type
     TSedi%erhal_r = 0._r8
     TSedi%erhb_r = 0._r8
     TSedi%seh_r = 0._r8
-    !TSedi_para%d50 = 0._r8
+    TSedi_para%d50 = 0._r8
     TSedi_para%u_f = 0._r8
     do iunit = begr, endr
         TSedi_para%u_f(iunit) = CRUF(TUnit%rdepth(iunit), TUnit%rslp(iunit))

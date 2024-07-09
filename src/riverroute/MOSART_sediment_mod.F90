@@ -29,7 +29,7 @@ MODULE MOSART_sediment_mod
 !--------------------------------------------------------------------------------
 
     subroutine hillslopeSediment(iunit, theDeltaT)
-    ! !DESCRIPTION: Hillslope erosion/routing of sediment, called in mosart_physics, subroutine Euler
+    ! !DESCRIPTION: Hillslope erosion/routing of sediment
         implicit none
 
         integer, intent(in) :: iunit
@@ -49,11 +49,7 @@ MODULE MOSART_sediment_mod
         !TRunoff%etin(iunit,nt_nmud) = TRunoff%qsur(iunit,nt_nmud) * TUnit%area(iunit)
         !TRunoff%etin(iunit,nt_nmud) = 1.e-6_r8 * TUnit%area(iunit) * TUnit%frac(iunit) ! Ks/s
         !TRunoff%etin(iunit,nt_nsan) = 1.e-6_r8 * TUnit%area(iunit) * TUnit%frac(iunit) ! Ks/s
-        !open(unit=10, file='/data4/home/dpeng/CESM/cesm2.1.3/outputdata/mosart_test1_sediment/run/variables.log')
-        !write(10,*)  '####'   
-        !write(10,*)  'iunit=', iunit
-        !write(10,*)  'TRunoff%qsur(iunit,nt_nmud)=', TRunoff%qsur(iunit,nt_nmud)
-        !write(10,*)  'TRunoff%ehout(iunit, nt_nmud)=', TRunoff%ehout(iunit, nt_nmud)
+
     end subroutine hillslopeSediment
 
 !---------------------------------------------------------------------
@@ -145,6 +141,7 @@ MODULE MOSART_sediment_mod
 
             TSedi%Ssal_t(iunit) = TSedi%Ssal_t(iunit) + (TSedi%ses_t(iunit) - TSedi%ersal_t(iunit)) * theDeltaT
             TSedi%Smal_t(iunit) = TSedi%Smal_t(iunit) + (TSedi%sem_t(iunit) - TSedi%ermal_t(iunit)) * theDeltaT
+            TSedi%Shal_t(iunit) = TSedi%Shal_t(iunit) + (TSedi%sem_t(iunit) - TSedi%erhal_t(iunit)) * theDeltaT
 
             TRunoff%dwt(iunit,nt_nsan) = 0._r8 !TRunoff%etin(iunit,nt_nsan) + TRunoff%etout(iunit,nt_nsan) + TSedi%ersal_t(iunit) - TSedi%ses_t(iunit) + TSedi%ersb_t(iunit)
             TRunoff%dwt(iunit,nt_nmud) = TRunoff%etin(iunit,nt_nmud) + TRunoff%etout(iunit,nt_nmud) + TSedi%ermal_t(iunit) - TSedi%sem_t(iunit) + TSedi%ermb_t(iunit)
@@ -153,12 +150,15 @@ MODULE MOSART_sediment_mod
 
             !TRunoff%wt(iunit,nt_nsan) = TRunoff%wt(iunit,nt_nsan) + TRunoff%dwt(iunit,nt_nsan)*theDeltaT
             !TRunoff%wt(iunit,nt_nmud) = TRunoff%wt(iunit,nt_nmud) + TRunoff%dwt(iunit,nt_nmud)*theDeltaT
+            !TRunoff%wt(iunit,nt_nphg) = TRunoff%wt(iunit,nt_nphg) + TRunoff%dwt(iunit,nt_nphg)*theDeltaT
 
             !! for budget calculation
             TRunoff%wt_al(iunit,nt_nsan) = TSedi%Ssal_t(iunit)
             TRunoff%wt_al(iunit,nt_nmud) = TSedi%Smal_t(iunit)
+            TRunoff%wt_al(iunit,nt_nphg) = TSedi%Shal_t(iunit)
             !TRunoff%etexchange(iunit,nt_nsan) = TSedi%ersb_t(iunit)
             !TRunoff%etexchange(iunit,nt_nmud) = TSedi%ermb_t(iunit)
+            !TRunoff%etexchange(iunit,nt_nphg) = TSedi%erhb_t(iunit)
 
 
             if(TRunoff%wt(iunit,nt_nmud) < -1.e-10) then
@@ -168,15 +168,15 @@ MODULE MOSART_sediment_mod
             
             if(TRunoff%wt(iunit,nt_nphg) < -1.e-10) then
                 write(iulog,*) 'Negative phg storage in t-zone! ', iunit, TRunoff%wt(iunit,nt_nphg) , TRunoff%etin(iunit,nt_nphg), TRunoff%etout(iunit,nt_nphg), TSedi%erhal_t(iunit), TSedi%seh_t(iunit), TSedi%erhb_t(iunit)
-                call shr_sys_abort('mosart: negative mud t-zone storage')
+                call shr_sys_abort('mosart: negative phg t-zone storage')
              end if
-    if(isnan(TRunoff%wt(iunit,nt_nmud)) .or. isnan(TRunoff%dwt(iunit,nt_nmud))) then
-        write(unit=2101,fmt="(i10, 5(e15.4))") iunit, TRunoff%etin(iunit,nt_nmud), TRunoff%etout(iunit,nt_nmud), TSedi%ermal_t(iunit), TSedi%sem_t(iunit), TSedi%ermb_t(iunit)
-    end if   
+    ! if(isnan(TRunoff%wt(iunit,nt_nmud)) .or. isnan(TRunoff%dwt(iunit,nt_nmud))) then
+    !     write(unit=2101,fmt="(i10, 5(e15.4))") iunit, TRunoff%etin(iunit,nt_nmud), TRunoff%etout(iunit,nt_nmud), TSedi%ermal_t(iunit), TSedi%sem_t(iunit), TSedi%ermb_t(iunit)
+    ! end if   
     
-    if(isnan(TRunoff%wt(iunit,nt_nphg)) .or. isnan(TRunoff%dwt(iunit,nt_nphg))) then
-        write(unit=2101,fmt="(i10, 5(e15.4))") iunit, TRunoff%etin(iunit,nt_nphg), TRunoff%etout(iunit,nt_nphg), TSedi%erhal_t(iunit), TSedi%seh_t(iunit), TSedi%erhb_t(iunit)
-    end if
+    ! if(isnan(TRunoff%wt(iunit,nt_nphg)) .or. isnan(TRunoff%dwt(iunit,nt_nphg))) then
+    !     write(unit=2101,fmt="(i10, 5(e15.4))") iunit, TRunoff%etin(iunit,nt_nphg), TRunoff%etout(iunit,nt_nphg), TSedi%erhal_t(iunit), TSedi%seh_t(iunit), TSedi%erhb_t(iunit)
+    ! end if
     
     end subroutine subnetworkSediment
 !----------------------------------------------------------------------
@@ -373,9 +373,11 @@ MODULE MOSART_sediment_mod
     
             TRunoff%dwr_al(iunit,nt_nsan) = TSedi%ses_r(iunit) - TSedi%ersal_r(iunit)
             TRunoff%dwr_al(iunit,nt_nmud) = TSedi%sem_r(iunit) - TSedi%ermal_r(iunit)
+            TRunoff%dwr_al(iunit,nt_nphg) = TSedi%seh_r(iunit) - TSedi%erhal_r(iunit)
     
-            TSedi%Ssal_r(iunit) = TSedi%Ssal_r(iunit) + TRunoff%dwr_al(iunit,nt_nsan) * theDeltaT
-            TSedi%Smal_r(iunit) = TSedi%Smal_r(iunit) + (TSedi%sem_r(iunit) - TSedi%ermal_r(iunit)) * theDeltaT
+            ! TSedi%Ssal_r(iunit) = TSedi%Ssal_r(iunit) + TRunoff%dwr_al(iunit,nt_nsan) * theDeltaT
+            ! TSedi%Smal_r(iunit) = TSedi%Smal_r(iunit) + (TSedi%sem_r(iunit) - TSedi%ermal_r(iunit)) * theDeltaT
+            ! !TSedi%Shal_r(iunit) = TSedi%Shal_r(iunit) + (TSedi%seh_r(iunit) - TSedi%erhal_r(iunit)) * theDeltaT
     
             TRunoff%dwr(iunit,nt_nsan) = TRunoff%erlateral(iunit,nt_nsan) + TRunoff%erin(iunit,nt_nsan) + TRunoff%erout(iunit,nt_nsan) + TSedi%ersal_r(iunit) - TSedi%ses_r(iunit) + TSedi%ersb_r(iunit)
             TRunoff%dwr(iunit,nt_nmud) = TRunoff%erlateral(iunit,nt_nmud) + TRunoff%erin(iunit,nt_nmud) + TRunoff%erout(iunit,nt_nmud) + TSedi%ermal_r(iunit) - TSedi%sem_r(iunit) + TSedi%ermb_r(iunit)
@@ -398,7 +400,8 @@ MODULE MOSART_sediment_mod
             end if
             if(TRunoff%wr(iunit,nt_nphg).gt.TINYVALUE_s .and. (TRunoff%wr(iunit,nt_nphg) + TRunoff%dwr(iunit,nt_nphg)*theDeltaT)/TRunoff%wr(iunit,nt_nphg) < -1.e-8 .and. (TRunoff%wr(iunit,nt_nphg) + TRunoff%dwr(iunit,nt_nphg)*theDeltaT) < -1.e-8) then
                 write(iulog,*) 'Negative phg storage in r-zone! ', iunit, TRunoff%wr(iunit, nt_nphg), TRunoff%erlateral(iunit,nt_nphg), TRunoff%erin(iunit,nt_nphg), TRunoff%erout(iunit,nt_nphg), TSedi%erhal_r(iunit), - TSedi%seh_r(iunit), TSedi%erhb_r(iunit) 
-                call shr_sys_abort('mosart: negative phg r-zone storage')
+                ! call shr_sys_abort('mosart: negative phg r-zone storage')
+                TRunoff%dwr(iunit,nt_nphg) = - TRunoff%wr(iunit,nt_nphg)/theDeltaT
             end if
     
             if(TSedi%Ssal_r(iunit) < -1.e-10) then

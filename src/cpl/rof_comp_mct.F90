@@ -22,7 +22,7 @@ module rof_comp_mct
   use RunoffMod        , only : rtmCTL, TRunoff
   use RtmVar           , only : rtmlon, rtmlat, ice_runoff, iulog, &
                                 nsrStartup, nsrContinue, nsrBranch, & 
-                                inst_index, inst_suffix, inst_name, RtmVarSet, sediflag
+                                inst_index, inst_suffix, inst_name, RtmVarSet, sediflag, wrmflag, inundflag
   use RtmSpmd          , only : masterproc, mpicom_rof, npes, iam, RtmSpmdInit, ROFID
   use RtmMod           , only : Rtmini, Rtmrun
   use RtmTimeManager   , only : timemgr_setup, get_curr_date, get_step_size, advance_timestep 
@@ -31,8 +31,9 @@ module rof_comp_mct
                                 index_x2r_Flrl_rofsur, index_x2r_Flrl_rofi, &
                                 index_x2r_Flrl_rofgwl, index_x2r_Flrl_rofsub, &
                                 index_x2r_Flrl_irrig,&
-                                index_x2r_Flrl_rofmud, &
+                                index_x2r_Flrl_rofdto, index_x2r_Flrl_rofmud, &
                                 index_x2r_Flrl_rofhg, &
+                                index_x2r_Flrl_rofhgE, &
                                 index_r2x_Forr_rofl, index_r2x_Forr_rofi, &
                                 index_r2x_Flrr_flood, &
                                 index_r2x_Flrr_volr, index_r2x_Flrr_volrmch
@@ -302,7 +303,7 @@ contains
     write(rdate,'(i4.4,"-",i2.2,"-",i2.2,"-",i5.5)') yr_sync,mon_sync,day_sync,tod_sync
     nlend = seq_timemgr_StopAlarmIsOn( EClock )
     rstwr = seq_timemgr_RestartAlarmIsOn( EClock )
-    call advance_timestep()
+   !  call advance_timestep()
     call Rtmrun(rstwr,nlend,rdate)
 
     ! Map roff data to MCT datatype (input is rtmCTL%runoff, output is r2x_r)
@@ -542,7 +543,7 @@ contains
        endif
        if (trim(rtm_tracers(nt)) == 'PHG') then
          nphg = nt
-      endif       
+       endif       
     enddo
     if (nliq == 0) then
        write(iulog,*) trim(sub),': ERROR in rtm_tracers LIQ',nliq,rtm_tracers
@@ -574,6 +575,12 @@ contains
        rtmCTL%qsub(n,nliq) = x2r_r%rAttr(index_x2r_Flrl_rofsub,n2) * (rtmCTL%area(n)*0.001_r8)
        rtmCTL%qgwl(n,nliq) = x2r_r%rAttr(index_x2r_Flrl_rofgwl,n2) * (rtmCTL%area(n)*0.001_r8)
 
+         ! if (index_x2r_Flrl_rofdto > 0) then
+         !    rtmCTL%qdto(n,nliq) = x2r_r%rAttr(index_x2r_Flrl_rofdto,n2) * (rtmCTL%area(n)*0.001_r8)
+         ! else
+         !     rtmCTL%qdto(n,nliq) = 0.0_r8
+         ! endif
+         
        rtmCTL%qsur(n,nfrz) = x2r_r%rAttr(index_x2r_Flrl_rofi,n2) * (rtmCTL%area(n)*0.001_r8)
        rtmCTL%qirrig(n)    = x2r_r%rAttr(index_x2r_Flrl_irrig,n2) * (rtmCTL%area(n)*0.001_r8)
 
@@ -584,6 +591,7 @@ contains
        rtmCTL%qsur(n,nsan) = 0.0_r8
 
        rtmCTL%qsur(n,nphg) = 0.0_r8
+       rtmCTL%qsurE = 0.0_r8
 
     enddo
 
@@ -593,6 +601,26 @@ contains
          rtmCTL%qsur(n,nmud) = x2r_r%rAttr(index_x2r_Flrl_rofmud,n2) * (rtmCTL%area(n)) ! kg/m2/s --> kg/s for sediment
          rtmCTL%qsur(n,nphg) = x2r_r%rAttr(index_x2r_Flrl_rofhg,n2) * (rtmCTL%area(n)) ! g/m2/s --> g/s for sediment-hg
          rtmCTL%qsur(n,nsan) = 0.0_r8
+         rtmCTL%qsurE(n) = ((x2r_r%rAttr(index_x2r_Flrl_rofhgE,n2)*1e-9_r8)*(rtmCTL%area(n))) !ng/m2/s --> g/s for emission-Hg
+
+         !remove nan and add emission phg
+         ! open(unit=10, file='/data4/home/dpeng/waterloo/cesm2.1.3/outputdata/log/log_2.log')
+         ! write(10,*) '####'
+         ! write(10,*) 'rtmCTL%qsur(n,nphg)_before =', rtmCTL%qsur(n,nphg)
+         ! write(10,*) 'rtmCTL%qsurE(n) =', rtmCTL%qsurE(n)
+         ! write(10,*) '(n) =', n
+
+         if (rtmCTL%qsurE(n)>1e20_r8) then
+            rtmCTL%qsur(n,nphg) = rtmCTL%qsur(n,nphg)
+            rtmCTL%qsurE(n) = 0.0_r8
+         else 
+            rtmCTL%qsur(n,nphg) = rtmCTL%qsur(n,nphg) + rtmCTL%qsurE(n)
+         end if
+
+         ! write(10,*) '####'
+         ! write(10,*) 'rtmCTL%qsur(n,nphg)_after =', rtmCTL%qsur(n,nphg)
+         ! write(10,*) '(n) =', n
+
       enddo
 	 end if
   end subroutine rof_import_mct

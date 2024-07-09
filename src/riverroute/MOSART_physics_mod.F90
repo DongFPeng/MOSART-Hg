@@ -13,17 +13,30 @@ MODULE MOSART_physics_mod
   use shr_kind_mod  , only : r8 => shr_kind_r8
   use shr_const_mod , only : SHR_CONST_REARTH, SHR_CONST_PI
   use shr_sys_mod   , only : shr_sys_abort
-  use RtmVar        , only : iulog, barrier_timers, sediflag
+  use RtmVar        , only : iulog, barrier_timers, sediflag, wrmflag, inundflag, rstraflag
   use RunoffMod     , only : Tctl, TUnit, TRunoff, TPara, rtmCTL, &
-                             SMatP_eroutUp, avsrc_eroutUp, avdst_eroutUp, SMatP_dnstrm, avsrc_dnstrm, avdst_dnstrm
+                              SMatP_upstrm, avsrc_upstrm, avdst_upstrm, SMatP_dnstrm, avsrc_dnstrm, avdst_dnstrm
   use RtmSpmd       , only : masterproc, mpicom_rof
+  use RtmTimeManager, only : get_curr_date, is_new_month
+  
+  use WRM_type_mod  , only : ctlSubwWRM, WRMUnit, StorWater
+  use WRM_modules   , only : irrigationExtractionSubNetwork, &
+                             irrigationExtractionMainChannel, &
+                             Regulation, ExtractionRegulatedFlow
+  use WRM_returnflow, only : insert_returnflow_channel, &
+                             insert_returnflow_soilcolumn, &
+                             estimate_returnflow_deficit
+  use WRM_subw_io_mod, only : WRM_readDemand, WRM_computeRelease
+  use MOSARTinund_Core_MOD, only: ChnlFPexchg
   use rof_cpl_indices, only : nt_rtm, rtm_tracers, nt_nliq, nt_nice, nt_nmud, nt_nsan, nt_nphg, KW, DW
   use perf_mod, only: t_startf, t_stopf
   use mct_mod  
   use MOSART_BGC_type, only : TSedi
   use MOSART_sediment_mod
-  !use MOSART_RES_type
-  !use MOSART_reservoir_mod
+  use MOSART_RES_type
+  use MOSART_reservoir_mod
+
+
   implicit none
   private
 
@@ -53,8 +66,56 @@ MODULE MOSART_physics_mod
     integer :: iunit, m, k, unitUp, cnt, ier   !local index
     real(r8) :: temp_erout, localDeltaT, temp_haout, temp_Tt, temp_Tr, temp_T, temp_ha
     real(r8) :: mud_erout, san_erout, temp_ehexch, temp_etexch, temp_erexch, phg_erout
+    integer  :: yr,mon,day,tod
+    real(r8) :: myTINYVALUE
+    character(len=*),parameter :: subname = '(Euler)'
     real(r8) :: negchan, numSubSteps
     real(r8) :: tmp1, tmp2
+    !----------------------------
+
+    myTINYVALUE = 1.e-6
+
+    call get_curr_date(yr, mon, day, tod)
+    !------------------
+    ! WRM prep
+    !------------------
+
+
+    if (wrmflag) then
+       if ( ctlSubwWRM%ReturnFlowFlag > 0) then
+          call insert_returnflow_soilcolumn
+       endif
+       !call readPotentialEvap(trim(theTime))
+       if ( is_new_month() ) then
+         if (masterproc) write(iulog,*) trim(subname),' updating monthly data at ',yr,mon,day,tod
+         if (ctlSubwWRM%ExternalDemandFlag > 0) then
+          call WRM_readDemand()
+         end if 
+         call WRM_computeRelease() !! about regulation
+       end if
+
+        if (ctlSubwWRM%ExtractionFlag > 0) then 
+         do iunit=rtmCTL%begr,rtmCTL%endr
+           if (ctlSubwWRM%ExternalDemandFlag == 0) then  ! if demand is from ELM, reset the demand0 every timestep
+             StorWater%demand0(iunit) = 0
+           endif
+            !  do nt=nt_nliq
+            !   if (TUnit%mask(iunit) > 0) then
+              if (TUnit%mask(iunit) > 0 .and. nt == nt_nliq) then
+                  if (ctlSubwWRM%ExternalDemandFlag == 0) then  ! if demand is from ELM
+                      !StorWater%demand0(iunit) = StorWater%demand0(iunit) - TRunoff%qirrig(iunit) * TUnit%area(iunit) * TUnit%frac(iunit)
+                  endif
+              endif
+            ! enddo  
+          enddo
+       end if
+       StorWater%demand = StorWater%demand0 * Tctl%DeltaT
+       !supply is set to zero in RtmMod so it can be accumulated there for the budget
+       !StorWater%supply = 0._r8
+       !StorWater%deficit =0._r8
+    endif
+
+
     !------------------
     ! hillslope
     !------------------
@@ -67,11 +128,8 @@ MODULE MOSART_physics_mod
 
           call hillslopeRouting(iunit,nt,Tctl%DeltaT) ! calculate wh(storage of surface water, [m]), ehout (overland flow from hillslope into the sub-channel, [m/s])
           ! and dwh (change of water storage, [m/s])
-
           TRunoff%wh(iunit,nt) = TRunoff%wh(iunit,nt) + TRunoff%dwh(iunit,nt) * Tctl%DeltaT ! water storage, [m]
-
           call UpdateState_hillslope(iunit,nt) !calculate yh (water depth, [m])
-
           TRunoff%etin(iunit,nt) = (-TRunoff%ehout(iunit,nt) + TRunoff%qsub(iunit,nt)) * TUnit%area(iunit) * TUnit%frac(iunit) 
           !cal lateral inflow from hillslope, parameter for subnetwork,[m3/s]
 
@@ -98,37 +156,36 @@ MODULE MOSART_physics_mod
             TRunoff%ehexch_avg(iunit,nt_nmud) = TRunoff%etin(iunit,nt_nmud)
             TRunoff%ehexch_avg(iunit,nt_nphg) = TRunoff%etin(iunit,nt_nphg)
          endif
-         !open(unit=10, file='/data4/home/dpeng/CESM/cesm2.1.3/outputdata/mosart_test1_sediment/run/variables.log')
-                     !write(10,*)  '####'   
-                     !write(10,*)  'iunit=', iunit
-                     !write(10,*)  'TRunoff%etin(iunit,nt_nmud) =', TRunoff%etin(iunit,nt_nmud)
-                     !write(10,*)  'TRunoff%ehout(iunit,nt_nmud)=', TRunoff%ehout(iunit,nt_nmud)
       end do
       endif
-
     call t_stopf('mosartr_hillslope')
 
     TRunoff%flow = 0._r8
-    !TRunoff%erowm_regi = 0._r8
+   !  TRunoff%erowm_regi = 0._r8
     !TRunoff%erowm_regf = 0._r8
     !TRunoff%eroup_lagi = 0._r8
     !TRunoff%eroup_lagf = 0._r8
     TRunoff%erout_prev = 0._r8
     TRunoff%eroutup_avg = 0._r8
     TRunoff%erlat_avg = 0._r8
+    if (inundflag) then
+      TRunoff%se_rf = 0._r8
+    endif
     TRunoff%etexch_avg = 0._r8
     TRunoff%erexch_avg = 0._r8  
     negchan = 9999.0_r8
+
+    ! subcycling within MOSART begins
     do m=1,Tctl%DLevelH2R
 
        !--- accumulate/average erout at prior timestep (used in eroutUp calc) for budget analysis
-       do nt=1,nt_rtm
-        if (TUnit%euler_calc(nt)) then
-         do iunit=rtmCTL%begr,rtmCTL%endr
-            TRunoff%erout_prev(iunit,nt) = TRunoff%erout_prev(iunit,nt) + TRunoff%erout(iunit,nt)
-         end do
-        end if
-       end do
+      !  do nt=1,nt_rtm
+      !   if (TUnit%euler_calc(nt)) then
+      !    do iunit=rtmCTL%begr,rtmCTL%endr
+      !       TRunoff%erout_prev(iunit,nt) = TRunoff%erout_prev(iunit,nt) + TRunoff%erout(iunit,nt)
+      !    end do
+      !   end if
+      !  end do
 
        !------------------
        ! subnetwork
@@ -143,6 +200,16 @@ MODULE MOSART_physics_mod
        if (TUnit%euler_calc(nt)) then
        do iunit=rtmCTL%begr,rtmCTL%endr
           if(TUnit%mask(iunit) > 0) then
+            !extraction from subnetwork here from wt
+            if (wrmflag) then
+               if (nt == nt_nliq) then
+                  if  (ctlSubwWRM%ExtractionFlag > 0 .and. TRunoff%yt(iunit,nt_nliq) >= 0.1_r8) then
+                     localDeltaT = Tctl%DeltaT/Tctl%DLevelH2R
+                     call irrigationExtractionSubNetwork(iunit, localDeltaT )
+                     call UpdateState_subnetwork(iunit,nt)
+                  endif
+               endif
+            endif
              localDeltaT = Tctl%DeltaT/Tctl%DLevelH2R/TUnit%numDT_t(iunit)
              do k=1,TUnit%numDT_t(iunit)
                 call subnetworkRouting(iunit,nt,localDeltaT) !cal etout, vt(flow speed,[m/s])
@@ -171,7 +238,7 @@ MODULE MOSART_physics_mod
                 TRunoff%wt(iunit,nt_nsan) = TRunoff%wt(iunit,nt_nsan) + TRunoff%dwt(iunit,nt_nsan) * localDeltaT
                !wt_al
                 TRunoff%wt_al(iunit,nt_nmud) = TRunoff%wt_al(iunit,nt_nmud) + TRunoff%dwt_al(iunit,nt_nmud) * localDeltaT
-                TRunoff%wt_al(iunit,nt_nphg) = TRunoff%wt_al(iunit,nt_nmud) + TRunoff%dwt_al(iunit,nt_nmud) * localDeltaT
+                TRunoff%wt_al(iunit,nt_nphg) = TRunoff%wt_al(iunit,nt_nphg) + TRunoff%dwt_al(iunit,nt_nphg) * localDeltaT
                 TRunoff%wt_al(iunit,nt_nsan) = TRunoff%wt_al(iunit,nt_nsan) + TRunoff%dwt_al(iunit,nt_nsan) * localDeltaT
                 !update conc_t
                 call UpdateState_subnetwork(iunit,nt_nmud)
@@ -196,6 +263,28 @@ MODULE MOSART_physics_mod
              TRunoff%etexch_avg(iunit,nt_nphg) = TRunoff%etexch_avg(iunit,nt_nphg) + TRunoff%etexchange(iunit,nt_nphg)
              TRunoff%etexch_avg(iunit,nt_nsan) = TRunoff%etexch_avg(iunit,nt_nsan) + TRunoff%etexchange(iunit,nt_nsan)
           endif
+
+         ! #ifdef INCLUDE_WRM
+         !    ! TODO: sediment trapping by small reservoirs on sub-network channel
+         !    if (sediflag .and. wrmflag) then
+         !       localDeltaT = Tctl%DeltaT/Tctl%DLevelH2R
+         !       do nt=nt_nmud,nt_nsan,nt_nphg  ! I need to use something similar to storwater%supply and storwater%demand to keep the budget right
+         !          !TRunoff%erowm_regi(iunit,nt) = TRunoff%erowm_regi(iunit,nt) + TRunoff%erlateral(iunit,nt)
+         !       enddo
+                  
+         !       call res_trapping_t(iunit,nt_nmud)
+         !       Tres%wres_t(iunit,nt_nmud) = Tres%wres_t(iunit,nt_nmud) + Tres%dwres_t(iunit,nt_nmud) * localDeltaT
+         !       call res_trapping_t(iunit,nt_nsan)
+         !       Tres%wres_t(iunit,nt_nsan) = Tres%wres_t(iunit,nt_nsan) + Tres%dwres_t(iunit,nt_nsan) * localDeltaT
+         !       call res_trapping_t(iunit,nt_nphg)
+         !       Tres%wres_t(iunit,nt_nphg) = Tres%wres_t(iunit,nt_nphg) + Tres%dwres_t(iunit,nt_nphg) * localDeltaT
+               
+         !       do nt=nt_nmud,nt_nsan,nt_nphg
+         !       !TRunoff%erowm_regf(iunit,nt) = TRunoff%erowm_regf(iunit,nt) + TRunoff%erlateral(iunit,nt)
+         !       enddo
+         !    end if                 
+         ! #endif
+
        end do ! iunit
        endif  ! euler_calc
        !end do ! nt
@@ -227,25 +316,25 @@ MODULE MOSART_physics_mod
        end do
        end do
 #else
-       !--- copy erout into avsrc_eroutUp ---
-       call mct_avect_zero(avsrc_eroutUp)
+       !--- copy erout into avsrc_upstrm ---
+       call mct_avect_zero(avsrc_upstrm)
        cnt = 0
        do iunit = rtmCTL%begr,rtmCTL%endr
           cnt = cnt + 1
           do nt = 1,nt_rtm
-             avsrc_eroutUp%rAttr(nt,cnt) = TRunoff%erout(iunit,nt)
+             avsrc_upstrm%rAttr(nt,cnt) = TRunoff%erout(iunit,nt)
           enddo
        enddo
-       call mct_avect_zero(avdst_eroutUp)
+       call mct_avect_zero(avdst_upstrm)
 
-       call mct_sMat_avMult(avsrc_eroutUp, sMatP_eroutUp, avdst_eroutUp)
+       call mct_sMat_avMult(avsrc_upstrm, SMatP_upstrm, avdst_upstrm)
 
        !--- add mapped eroutUp to TRunoff ---
        cnt = 0
        do iunit = rtmCTL%begr,rtmCTL%endr
           cnt = cnt + 1
           do nt = 1,nt_rtm
-             TRunoff%eroutUp(iunit,nt) = avdst_eroutUp%rAttr(nt,cnt)
+             TRunoff%eroutUp(iunit,nt) = avdst_upstrm%rAttr(nt,cnt)
           enddo
        enddo
 
@@ -375,6 +464,36 @@ MODULE MOSART_physics_mod
              temp_erout = temp_erout / numSubSteps
              TRunoff%erout(iunit,nt) = temp_erout
 
+             !#ifdef INCLUDE_WRM
+             if (wrmflag) then
+               if (nt == nt_nliq) then
+                  localDeltaT = Tctl%DeltaT/Tctl%DLevelH2R
+                  if (ctlSubwWRM%ExtractionMainChannelFlag > 0 .AND. ctlSubwWRM%ExtractionFlag > 0  .and. TRunoff%yr(iunit,nt_nliq) >= 0.1_r8) then
+                     call IrrigationExtractionMainChannel(iunit, localDeltaT )
+                     if (ctlSubwWRM%TotalDemandFlag > 0 .AND. ctlSubwWRM%ReturnFlowFlag > 0 ) then
+                        call insert_returnflow_channel(iunit, localDeltaT )
+                     endif
+                     ! update main channel storage as well
+                     temp_erout = temp_erout - TRunoff%erout(iunit,nt) ! change in erout after regulation and extraction
+                     TRunoff%dwr(iunit,nt) =  temp_erout
+                     TRunoff%wr(iunit,nt) = TRunoff%wr(iunit,nt) + TRunoff%dwr(iunit,nt) * localDeltaT
+                     call UpdateState_mainchannel(iunit,nt)
+                  endif
+               ! moved out of loop
+                  if ( ctlSubwWRM%RegulationFlag>0 ) then
+                     call Regulation(iunit, localDeltaT)
+                     ! if (heatflag .and. rstraflag) then
+                     !     call stratification(iunit, localDeltaT,nt)
+                     !     call reservoirHeat(iunit, localDeltaT)
+                     ! elseif (heatflag .and. (.not.rstraflag)) then
+                     !   call reservoirHeat(iunit, localDeltaT)
+                     ! end if
+                  endif
+               endif
+               ! do not update wr after regulation or extraction from reservoir release. Because of the regulation, 
+               ! the wr might get to crazy uncontrolled values, assume in this case wr is not changed. The storage in reservoir handles it.
+             endif
+
              !TRunoff%eroup_lagf(iunit,nt) = TRunoff%eroup_lagf(iunit,nt) - TRunoff%erout(iunit,nt)
              TRunoff%flow(iunit,nt) = TRunoff%flow(iunit,nt) - TRunoff%erout(iunit,nt)
              
@@ -384,7 +503,7 @@ MODULE MOSART_physics_mod
        end do ! nt
 
         !! the treatment of mud and san is special since these two are interacting with each other
-       !do nt=nmud,nt_nsan ! sediment transport
+       !do nt=nmud,nt_nsan, nt_nphg ! sediment transport
        if (sediflag .and. TUnit%euler_calc(nt_nmud)) then
        do iunit=rtmCTL%begr,rtmCTL%endr
           if(TUnit%mask(iunit) > 0) then
@@ -424,7 +543,7 @@ MODULE MOSART_physics_mod
                  do k=1,numSubSteps
                     call Leapfrog_sed(iunit,localDeltaT)  ! note updating wr and other states are done in Leapfrog already
                     mud_erout = mud_erout + TRunoff%erout(iunit,nt_nmud) ! erout here might be inflow to some downstream subbasin, so treat it differently than erlateral
-                    phg_erout = phg_erout + TRunoff%erout(iunit,nt_nmud)
+                    phg_erout = phg_erout + TRunoff%erout(iunit,nt_nphg)
                     san_erout = san_erout + TRunoff%erout(iunit,nt_nsan) ! erout here might be inflow to some downstream subbasin, so treat it differently than erlateral
                     TRunoff%erexchange(iunit,nt_nmud) = TRunoff%erexchange(iunit,nt_nmud) + TSedi%ermb_r(iunit)
                     TRunoff%erexchange(iunit,nt_nphg) = TRunoff%erexchange(iunit,nt_nphg) + TSedi%erhb_r(iunit)
@@ -453,25 +572,74 @@ MODULE MOSART_physics_mod
              TRunoff%erexchange(iunit,nt_nsan) = TRunoff%erexchange(iunit,nt_nsan) / numSubSteps
              TRunoff%erexch_avg(iunit,nt_nsan) = TRunoff%erexch_avg(iunit,nt_nsan) + TRunoff%erexchange(iunit,nt_nsan)
 
-             ! write temp data
-             !open(unit=10, file='/data4/home/dpeng/CESM/cesm2.1.3/outputdata/mosart_test1_sediment/run/variables.log')
-                     !write(10,*)  '####'   
-                     !write(10,*)  'iunit=', iunit
-                     !write(10,*)  'NSTEPS', Tctl%NSTEPS
-                     !write(10,*)  'TRunoff%flow(iunit,nt_nsan)=', TRunoff%flow(iunit,nt_nsan)
-                     !write(10,*)  'TRunoff%flow(iunit,nt_nmud)=', TRunoff%flow(iunit,nt_nmud)          
-                     !write(10,*)  '####'    
           endif
+
+!#ifdef INCLUDE_WRM
+          !! Assume that reservoir regulation will only affect suspended load by changing the flow conditions, but do not directly affect sediment flux or storage
+          if (sediflag .and. wrmflag) then
+            localDeltaT = Tctl%DeltaT/Tctl%DLevelH2R
+            do nt=nt_nmud,nt_nsan, nt_nphg
+               !TRunoff%erowm_regi(iunit,nt) = TRunoff%erowm_regi(iunit,nt) - TRunoff%erout(iunit,nt)
+               TRunoff%flow(iunit,nt) = TRunoff%flow(iunit,nt) + TRunoff%erout(iunit,nt)
+            enddo
+
+            ! first round of trapping, for those main channel reservoirs that both regulate flow and trap sediment
+            if(Tres_para%Eff_trapping(iunit)>TINYVALUE) then            
+                call res_trapping(iunit,nt_nmud)
+                Tres%wres(iunit,nt_nmud) = Tres%wres(iunit,nt_nmud) + Tres%dwres(iunit,nt_nmud) * localDeltaT
+                call res_trapping(iunit,nt_nsan)
+                Tres%wres(iunit,nt_nsan) = Tres%wres(iunit,nt_nsan) + Tres%dwres(iunit,nt_nsan) * localDeltaT
+                call res_trapping(iunit,nt_nphg)
+                Tres%wres(iunit,nt_nphg) = Tres%wres(iunit,nt_nphg) + Tres%dwres(iunit,nt_nphg) * localDeltaT
+            end if
+
+            !! TODO: second round of trapping, for those main-channel reservoirs that trap sediment only
+            !if(Tres_para%Eff_trapping_r(iunit)>TINYVALUE) then             
+            !    call res_trapping_r(iunit,nt_nmud)
+            !    Tres%wres(iunit,nt_nmud) = Tres%wres(iunit,nt_nmud) + Tres%dwres(iunit,nt_nmud) * localDeltaT
+            !    call res_trapping_r(iunit,nt_nsan)
+            !    Tres%wres(iunit,nt_nsan) = Tres%wres(iunit,nt_nsan) + Tres%dwres(iunit,nt_nsan) * localDeltaT
+            !    call res_trapping_r(iunit,nt_nphg)
+            !    Tres%wres(iunit,nt_nphg) = Tres%wres(iunit,nt_nphg) + Tres%dwres(iunit,nt_nphg) * localDeltaT
+            !end if
+
+            do nt=nt_nmud,nt_nsan, nt_nphg
+              !TRunoff%erowm_regf(iunit,nt) = TRunoff%erowm_regf(iunit,nt) - TRunoff%erout(iunit,nt)
+              TRunoff%flow(iunit,nt) = TRunoff%flow(iunit,nt) - TRunoff%erout(iunit,nt)
+            enddo
+         end if
+
+!#endif
                    
 !#endif
           
        end do ! iunit
        endif  ! euler_calc
        !end do ! nt
-       negchan = min(negchan, minval(TRunoff%wr(:,:)))
 
+       if (inundflag) then
+         ! Channel -- floodplain exchange computation :      
+           call ChnlFPexchg ( )
+         ! update variables after channel-floodplain exchanges
+         ! Floodplain water volume :
+           TRunoff%wf_ini = TRunoff%wf_exchg
+         ! Floodplain max water depth :
+           TRunoff%hf_ini = TRunoff%hf_exchg     
+         ! Floodplain area fraction (not including channel) ! will be deleted
+           TRunoff%ff_ini = TRunoff%ff_fp
+         ! Flooded area fraction (including channel):
+           TRunoff%ffunit_ini = TRunoff%ff_unit
+         ! Channel water depth
+           TRunoff%yr(:,1) = TRunoff%yr_exchg
+         ! Channel storage
+           TRunoff%wr(:,1) = TRunoff%wr_exchg
+         ! Aggregate net floodplain storage change from subcycle to timestep 
+           TRunoff%se_rf = TRunoff%se_rf + TRunoff%netchange
+     end if     
+       negchan = min(negchan, minval(TRunoff%wr(:,:)))
        call t_stopf('mosartr_chanroute')    
-    end do
+    end do ! DLevelH2R
+    ! subcycling within MOSART ends
 
 ! check for negative channel storage
     if (negchan < -1.e-10) then
@@ -481,6 +649,8 @@ MODULE MOSART_physics_mod
     TRunoff%flow = TRunoff%flow / Tctl%DLevelH2R
     !TRunoff%erowm_regi(:,nt_nmud:nt_nsan) = TRunoff%erowm_regi(:,nt_nmud:nt_nsan) / Tctl%DLevelH2R
     !TRunoff%erowm_regf(:,nt_nmud:nt_nsan) = TRunoff%erowm_regf(:,nt_nmud:nt_nsan) / Tctl%DLevelH2R
+    !TRunoff%erowm_regi(:,nt_nphg) = TRunoff%erowm_regi(:,nt_nphg) / Tctl%DLevelH2R
+    !TRunoff%erowm_regf(:,nt_nphg) = TRunoff%erowm_regf(:,nt_nphg) / Tctl%DLevelH2R
     !TRunoff%eroup_lagi = TRunoff%eroup_lagi / Tctl%DLevelH2R
     !TRunoff%eroup_lagf = TRunoff%eroup_lagf / Tctl%DLevelH2R
     TRunoff%erout_prev = TRunoff%erout_prev / Tctl%DLevelH2R
@@ -488,6 +658,64 @@ MODULE MOSART_physics_mod
     TRunoff%erlat_avg = TRunoff%erlat_avg / Tctl%DLevelH2R
     TRunoff%etexch_avg = TRunoff%etexch_avg / Tctl%DLevelH2R
     TRunoff%erexch_avg = TRunoff%erexch_avg / Tctl%DLevelH2R
+
+      !------------------
+      ! WRM Regulation
+      ! WRM ExtractionRegulatedFlow
+      ! Do not update wr after regulation or extraction from reservoir release. 
+      ! Because of the regulation, the wr might get to crazy uncontrolled values, 
+      ! assume in this case wr is not changed. The storage in reservoir handles it.
+      !------------------
+
+      if (wrmflag) then
+         if (ctlSubwWRM%RegulationFlag>0) then
+            ! compute the erowm_reg terms and adjust the flow diagnostic
+            do iunit=rtmCTL%begr,rtmCTL%endr
+               !TRunoff%erowm_regi(iunit,nt_nliq) = -TRunoff%erout(iunit,nt_nliq)
+               TRunoff%flow(iunit,nt_nliq) = TRunoff%flow(iunit,nt_nliq) + TRunoff%erout(iunit,nt_nliq)
+            enddo
+            localDeltaT = Tctl%DeltaT
+   !          call t_startf('mosartr_wrm_Reg')
+   !          do iunit=rtmCTL%begr,rtmCTL%endr
+   !             if (TUnit%mask(iunit) > 0) then
+   !                call Regulation(iunit, localDeltaT) !move regulation back into the subcycling, Tian 9/26/2018
+   !             endif
+   !          enddo
+   !          call t_stopf('mosartr_wrm_Reg')
+            if (ctlSubwWRM%ExtractionFlag > 0 ) then
+               call t_startf('mosartr_wrm_ERFlow')
+               call ExtractionRegulatedFlow(localDeltaT)
+               ! a simple treatment after extracting water from the regulated streamflow. Assuming the extraction won't change the water temperature in the release
+               ! but the heat flux will be changed due to changing streamflow
+               ! if (heatflag) then
+               !    do iunit=rtmCTL%begr,rtmCTL%endr
+               !       THeat%Ha_rout(iunit) = -cr_advectheat(abs(TRunoff%erout(iunit,nt_nliq)), THeat%Tr(iunit))
+               !    enddo
+               ! end if
+               call t_stopf('mosartr_wrm_ERFlow')
+            endif
+   !          !--- now subtract updated erout to update flow calc
+   !          ! compute the erowm_reg terms and adjust the flow diagnostic
+            do iunit=rtmCTL%begr,rtmCTL%endr
+               !TRunoff%erowm_regf(iunit,nt_nliq) = -TRunoff%erout(iunit,nt_nliq)
+               TRunoff%flow(iunit,nt_nliq) = TRunoff%flow(iunit,nt_nliq) - TRunoff%erout(iunit,nt_nliq)
+            enddo
+         endif
+      endif
+
+      !------------------
+      ! WRM post Euler updates
+      !------------------
+
+      if (wrmflag) then
+         call t_startf('mosartr_wrm_estrfdef')
+         call estimate_returnflow_deficit()
+         if (ctlSubwWRM%ExtractionFlag > 0) then
+            StorWater%deficit = StorWater%demand
+            StorWater%deficit = StorWater%deficit/Tctl%DeltaT !change it back from mm/timestep to mm/s for output
+         endif
+         call t_stopf('mosartr_wrm_estrfdef')
+      endif
 
   end subroutine Euler
 

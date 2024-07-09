@@ -286,4 +286,61 @@
     </desc>
   </entry>
 
+    <entry id="wrmflag">
+    <type>logical</type> 
+    <category>mosart</category>
+    <group>mosart_inparm</group>
+    <values>
+      <value>.false.</value>
+    </values>
+    <desc>
+      Default: .false.
+      If .true., water management model will be turned on.
+    </desc>
+  </entry>
+
+    <entry id="sediflag">
+    <type>logical</type> 
+    <category>mosart</category>
+    <group>mosart_inparm</group>
+    <values>
+      <value>.true.</value>
+    </values>
+    <desc>
+      Default: .true.
+      If .true., sediment flux will be calculated;
+      If .true., sediment model will be turned on.
+    </desc>
+  </entry>
+
+    <entry id="inundflag">
+    <type>logical</type> 
+    <category>mosart</category>
+    <group>mosart_inparm</group>
+    <values>
+      <value>.false.</value>
+    </values>
+    <desc>
+      Default: .false.
+      If .true., inundation model will be turned on.
+    </desc>
+  </entry>
+
+<!-- ========================================================================================  -->
+<!-- WRM Namelist -->
+<!-- ========================================================================================  -->
+
+  <!-- <entry id="paraFile">
+      <type>char</type> 
+      <category>mosart</category>
+      <input_pathname>abs</input_pathname>
+      <group>mosart_inparm</group>
+      <values>
+          <value>$DIN_LOC_ROOT/rof/mosart/global_reservoir_halfdegree_c20200917.nc</value>
+      </values>
+      <desc>
+            WRM input file
+      </desc>
+    </entry> -->
+
 </entry_id>

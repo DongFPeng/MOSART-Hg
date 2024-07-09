@@ -31,6 +31,7 @@ module rof_cpl_indices
   integer, public :: index_x2r_Flrl_irrig  = 0 ! lnd->rof fraction of volr to be removed for irrigation
   integer, public :: index_x2r_Flrl_rofmud = 0  ! lnd->rof input suspended sediment flux from soil erosion
   integer, public :: index_x2r_Flrl_rofhg = 0  ! lnd->rof input suspended sediment-hg flux from soil erosion
+  integer, public :: index_x2r_Flrl_rofhgE = 0  ! lnd->rof input emission-hg flux from inventory
   integer, public :: nflds_x2r = 0
 
   !TODO - nt_rtm and rtm_tracers need to be removed and set by access to the index array
@@ -99,6 +100,7 @@ contains
     index_x2r_Flrl_irrig = mct_avect_indexra(avtmp,'Flrl_irrig')
     index_x2r_Flrl_rofmud = mct_avect_indexra(avtmp,'Flrl_rofmud')
     index_x2r_Flrl_rofhg = mct_avect_indexra(avtmp,'Flrl_rofhg')
+    index_x2r_Flrl_rofhgE = mct_avect_indexra(avtmp,'Flrl_rofhgE')
 
     nflds_x2r = mct_avect_nRattr(avtmp)
 
