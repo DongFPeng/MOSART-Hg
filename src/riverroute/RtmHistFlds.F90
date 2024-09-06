@@ -11,10 +11,7 @@ module RtmHistFlds
   use shr_kind_mod   , only: r8 => shr_kind_r8
   use RunoffMod      , only : rtmCTL
   use RtmHistFile    , only : RtmHistAddfld, RtmHistPrintflds
-  use RtmVar         , only : sediflag, wrmflag, inundflag
   use rof_cpl_indices, only : nt_rtm, rtm_tracers  
-  use MOSART_RES_type, only : Tres
-  use WRM_type_mod  , only : ctlSubwWRM, WRMUnit, StorWater
 
   implicit none
 !
@@ -41,36 +38,20 @@ contains
     implicit none
     !-------------------------------------------------------
 
-     ! call RtmHistAddfld (fname='MASK', units='1',  &
-     ! avgflag='A', long_name='MOSART mask 1=land 2=ocean 3=outlet ', &
-     ! ptr_rof=rtmCTL%rmask, default='active')
-
-     ! call RtmHistAddfld (fname='GINDEX', units='1',  &
-     ! avgflag='A', long_name='MOSART global index ', &
-     ! ptr_rof=rtmCTL%rgindex, default='inactive')
-
-     ! call RtmHistAddfld (fname='DSIG', units='1',  &
-     ! avgflag='A', long_name='MOSART downstream index ', &
-     ! ptr_rof=rtmCTL%rdsig, default='inactive')
-
-     ! call RtmHistAddfld (fname='OUTLETG', units='1',  &
-     ! avgflag='A', long_name='MOSART outlet index ', &
-     ! ptr_rof=rtmCTL%routletg, default='inactive')
-
-    call RtmHistAddfld (fname='RDOL'//'_'//trim(rtm_tracers(1)), units='m3/s',  &
-         avgflag='A', long_name='MOSART river basin flow (RIVER_DISCHARGE_OVER_LAND): '//trim(rtm_tracers(1)), &
+    call RtmHistAddfld (fname='RIVER_DISCHARGE_OVER_LAND'//'_'//trim(rtm_tracers(1)), units='m3/s',  &
+         avgflag='A', long_name='MOSART river basin flow: '//trim(rtm_tracers(1)), &
          ptr_rof=rtmCTL%runofflnd_nt1, default='active')
 
-    call RtmHistAddfld (fname='RDOL'//'_'//trim(rtm_tracers(2)), units='m3/s',  &
-         avgflag='A', long_name='MOSART river basin flow (RIVER_DISCHARGE_OVER_LAND): '//trim(rtm_tracers(2)), &
+    call RtmHistAddfld (fname='RIVER_DISCHARGE_OVER_LAND'//'_'//trim(rtm_tracers(2)), units='m3/s',  &
+         avgflag='A', long_name='MOSART river basin flow: '//trim(rtm_tracers(2)), &
          ptr_rof=rtmCTL%runofflnd_nt2, default='active')
 
-    call RtmHistAddfld (fname='RDTO'//'_'//trim(rtm_tracers(1)), units='m3/s',  &
-         avgflag='A', long_name='MOSART river discharge into ocean (RIVER_DISCHARGE_TO_OCEAN): '//trim(rtm_tracers(1)), &
+    call RtmHistAddfld (fname='RIVER_DISCHARGE_TO_OCEAN'//'_'//trim(rtm_tracers(1)), units='m3/s',  &
+         avgflag='A', long_name='MOSART river discharge into ocean: '//trim(rtm_tracers(1)), &
          ptr_rof=rtmCTL%runoffocn_nt1, default='inactive')
 
-    call RtmHistAddfld (fname='RDTO'//'_'//trim(rtm_tracers(2)), units='m3/s',  &
-         avgflag='A', long_name='MOSART river discharge into ocean (RIVER_DISCHARGE_TO_OCEAN): '//trim(rtm_tracers(2)), &
+    call RtmHistAddfld (fname='RIVER_DISCHARGE_TO_OCEAN'//'_'//trim(rtm_tracers(2)), units='m3/s',  &
+         avgflag='A', long_name='MOSART river discharge into ocean: '//trim(rtm_tracers(2)), &
          ptr_rof=rtmCTL%runoffocn_nt2, default='inactive')
 
     call RtmHistAddfld (fname='TOTAL_DISCHARGE_TO_OCEAN'//'_'//trim(rtm_tracers(1)), units='m3/s', &
@@ -88,10 +69,6 @@ contains
     call RtmHistAddfld (fname='DIRECT_DISCHARGE_TO_OCEAN'//'_'//trim(rtm_tracers(2)), units='m3/s', &
          avgflag='A', long_name='MOSART direct discharge into ocean: '//trim(rtm_tracers(2)), &
          ptr_rof=rtmCTL%runoffdir_nt2, default='active')
-
-    call RtmHistAddfld (fname='Main_Channel_STORAGE'//'_'//trim(rtm_tracers(1)), units='m3',  &
-         avgflag='A', long_name='MOSART main channel storage: '//trim(rtm_tracers(1)), &
-         ptr_rof=rtmCTL%wr_nt1, default='active')
 
     call RtmHistAddfld (fname='STORAGE'//'_'//trim(rtm_tracers(1)), units='m3',  &
          avgflag='A', long_name='MOSART storage: '//trim(rtm_tracers(1)), &
@@ -123,7 +100,7 @@ contains
 
     call RtmHistAddfld (fname='QSUR'//'_'//trim(rtm_tracers(1)), units='m3/s',  &
          avgflag='A', long_name='MOSART input surface runoff: '//trim(rtm_tracers(1)), &
-         ptr_rof=rtmCTL%qsur_nt1, default='active')
+         ptr_rof=rtmCTL%qsur_nt1, default='inactive')
 
     call RtmHistAddfld (fname='QSUR'//'_'//trim(rtm_tracers(2)), units='m3/s',  &
          avgflag='A', long_name='MOSART input surface runoff: '//trim(rtm_tracers(2)), &
@@ -144,14 +121,6 @@ contains
     call RtmHistAddfld (fname='QGWL'//'_'//trim(rtm_tracers(2)), units='m3/s',  &
          avgflag='A', long_name='MOSART input GWL runoff: '//trim(rtm_tracers(2)), &
          ptr_rof=rtmCTL%qgwl_nt2, default='inactive')
-     
-     ! call RtmHistAddfld (fname='QDTO'//'_'//trim(rtm_tracers(1)), units='m3/s',  &
-     !      avgflag='A', long_name='MOSART input direct to ocean runoff: '//trim(rtm_tracers(1)), &
-     !      ptr_rof=rtmCTL%qdto_nt1, default='active')
-
-     ! call RtmHistAddfld (fname='QDTO'//'_'//trim(rtm_tracers(2)), units='m3/s',  &
-     !      avgflag='A', long_name='MOSART input direct to ocean runoff: '//trim(rtm_tracers(2)), &
-     !      ptr_rof=rtmCTL%qdto_nt2, default='active')
 
     call RtmHistAddfld (fname='QIRRIG_FROM_COUPLER', units='m3/s',  &
          avgflag='A', long_name='Amount of water used for irrigation (total flux received from coupler)', &
@@ -160,137 +129,6 @@ contains
     call RtmHistAddfld (fname='QIRRIG_ACTUAL', units='m3/s',  &
          avgflag='A', long_name='Actual irrigation (if limited by river storage)', &
          ptr_rof=rtmCTL%qirrig_actual, default='inactive')
-
-    if(sediflag) then
-      call RtmHistAddfld (fname='RDOL'//'_'//trim(rtm_tracers(3)), units='kg/s',  &
-           avgflag='A', long_name='MOSART river basin flow (RIVER_DISCHARGE_OVER_LAND): '//trim(rtm_tracers(3)), &
-           ptr_rof=rtmCTL%runofflnd_nt3, default='active')
-    
-      call RtmHistAddfld (fname='RDOL'//'_'//trim(rtm_tracers(4)), units='kg/s',  &
-           avgflag='A', long_name='MOSART river basin flow (RIVER_DISCHARGE_OVER_LAND): '//trim(rtm_tracers(4)), &
-           ptr_rof=rtmCTL%runofflnd_nt4, default='active')
-
-     call RtmHistAddfld (fname='RDOL'//'_'//trim(rtm_tracers(5)), units='g/s',  &
-           avgflag='A', long_name='MOSART river basin flow (RIVER_DISCHARGE_OVER_LAND): '//trim(rtm_tracers(5)), &
-           ptr_rof=rtmCTL%runofflnd_nt5, default='active')
-    
-      call RtmHistAddfld (fname='RDTO'//'_'//trim(rtm_tracers(3)), units='kg/s',  &
-           avgflag='A', long_name='MOSART river discharge into ocean (RIVER_DISCHARGE_TO_OCEAN): '//trim(rtm_tracers(3)), &
-           ptr_rof=rtmCTL%runoffocn_nt3, default='active')
-    
-      call RtmHistAddfld (fname='RDTO'//'_'//trim(rtm_tracers(4)), units='kg/s',  &
-           avgflag='A', long_name='MOSART river discharge into ocean (RIVER_DISCHARGE_TO_OCEAN): '//trim(rtm_tracers(4)), &
-           ptr_rof=rtmCTL%runoffocn_nt4, default='active')
-
-      call RtmHistAddfld (fname='RDTO'//'_'//trim(rtm_tracers(5)), units='g/s',  &
-           avgflag='A', long_name='MOSART river discharge into ocean (RIVER_DISCHARGE_TO_OCEAN): '//trim(rtm_tracers(5)), &
-           ptr_rof=rtmCTL%runoffocn_nt5, default='active')
-           
-      call RtmHistAddfld (fname='STORAGE'//'_'//trim(rtm_tracers(3)), units='kg',  &
-           avgflag='A', long_name='MOSART storage: '//trim(rtm_tracers(3)), &
-           ptr_rof=rtmCTL%volr_nt3, default='active')
-    
-      call RtmHistAddfld (fname='STORAGE'//'_'//trim(rtm_tracers(4)), units='kg',  &
-           avgflag='A', long_name='MOSART storage: '//trim(rtm_tracers(4)), &
-           ptr_rof=rtmCTL%volr_nt4, default='active')
-
-      call RtmHistAddfld (fname='STORAGE'//'_'//trim(rtm_tracers(5)), units='g',  &
-           avgflag='A', long_name='MOSART storage: '//trim(rtm_tracers(5)), &
-           ptr_rof=rtmCTL%volr_nt5, default='active')
-    
-      call RtmHistAddfld (fname='QSUR'//'_'//trim(rtm_tracers(3)), units='kg/s',  &
-           avgflag='A', long_name='MOSART sediment yield from hillslope: '//trim(rtm_tracers(3)), &
-           ptr_rof=rtmCTL%qsur_nt3, default='active')
-
-      call RtmHistAddfld (fname='QSUR'//'_'//trim(rtm_tracers(5)), units='g/s',  &
-           avgflag='A', long_name='MOSART phg yield from hillslope: '//trim(rtm_tracers(5)), &
-           ptr_rof=rtmCTL%qsur_nt5, default='active')
-
-      call RtmHistAddfld (fname='QSUR_HGE', units='g/s',  &
-           avgflag='A', long_name='MOSART Hg emission from hillslope: Hg emission', &
-           ptr_rof=rtmCTL%qsur_nt6, default='active')
-     
-
-
-    end if
-
-    
-    if (wrmflag) then
-
-     call RtmHistAddfld (fname='RES_sub'//'_'//trim(rtm_tracers(1)), units='m3',  &
-        avgflag='A', long_name='Reservoir subnetwork storage: '//trim(rtm_tracers(1)), &
-        ptr_rof=Tres%wres_t_nt1, default='inactive') 
-
-     call RtmHistAddfld (fname='RES_sub'//'_'//trim(rtm_tracers(2)), units='m3',  &
-        avgflag='A', long_name='Reservoir subnetwork storage: '//trim(rtm_tracers(2)), &
-        ptr_rof=Tres%wres_t_nt2, default='inactive') 
-
-     call RtmHistAddfld (fname='RES_sub'//'_'//trim(rtm_tracers(3)), units='kg',  &
-        avgflag='A', long_name='Reservoir subnetwork storage: '//trim(rtm_tracers(3)), &
-        ptr_rof=Tres%wres_t_nt3, default='active') 
-
-     ! call RtmHistAddfld (fname='RES_sub'//'_'//trim(rtm_tracers(4)), units='kg',  &
-     !    avgflag='A', long_name='Reservoir subnetwork storage: '//trim(rtm_tracers(4)), &
-     !    ptr_rof=Tres%wres_t_nt4, default='active') 
-
-     call RtmHistAddfld (fname='RES_sub'//'_'//trim(rtm_tracers(5)), units='g',  &
-        avgflag='A', long_name='Reservoir subnetwork storage: '//trim(rtm_tracers(5)), &
-        ptr_rof=Tres%wres_t_nt5, default='active') 
-     
-!--------Main-channel-------------------------------------------------------------
-
-     call RtmHistAddfld (fname='RES_mcl'//'_'//trim(rtm_tracers(1)), units='m3',  &
-        avgflag='A', long_name='Reservoir mainchannel storage: '//trim(rtm_tracers(1)), &
-        ptr_rof=Tres%wres_nt1, default='inactive') 
-
-     call RtmHistAddfld (fname='RES_mcl'//'_'//trim(rtm_tracers(2)), units='m3',  &
-        avgflag='A', long_name='Reservoir mainchannel storage: '//trim(rtm_tracers(2)), &
-        ptr_rof=Tres%wres_nt2, default='inactive') 
-
-     call RtmHistAddfld (fname='RES_mcl'//'_'//trim(rtm_tracers(3)), units='kg',  &
-        avgflag='A', long_name='Reservoir mainchannel storage: '//trim(rtm_tracers(3)), &
-        ptr_rof=Tres%wres_nt3, default='active') 
-
-     call RtmHistAddfld (fname='RES_mcl'//'_'//trim(rtm_tracers(4)), units='kg',  &
-        avgflag='A', long_name='Reservoir mainchannel storage: '//trim(rtm_tracers(4)), &
-        ptr_rof=Tres%wres_nt4, default='inactive') 
-
-     call RtmHistAddfld (fname='RES_mcl'//'_'//trim(rtm_tracers(5)), units='g',  &
-        avgflag='A', long_name='Reservoir mainchannel storage: '//trim(rtm_tracers(5)), &
-        ptr_rof=Tres%wres_nt5, default='active') 
-
-     ! call RtmHistAddfld (fname='WRM_IRR_SUPPLY', units='m3/s',  &
-     !    avgflag='A', long_name='WRM supply provided ', &
-     !    ptr_rof=StorWater%Supply, default='active')                                                                                                                              
-
-     ! call RtmHistAddfld (fname='WRM_IRR_DEMAND', units='m3/s',  &
-     !    avgflag='A', long_name='WRM demand requested ', &
-     !    ptr_rof=StorWater%demand0, default='active')
-
-     ! call RtmHistAddfld (fname='WRM_IRR_DEFICIT', units='m3/s',  &
-     !    avgflag='A', long_name='WRM deficit ', &
-     !    ptr_rof=StorWater%deficit, default='active')
-
-     call RtmHistAddfld (fname='WRM_STORAGE', units='m3',  &
-        avgflag='A', long_name='WRM storage ', &
-        ptr_rof=StorWater%storageG, default='active')
-   endif
-
-   if (inundflag) then
-     call RtmHistAddfld (fname='FLOODPLAIN_VOLUME', units='m3',  &
-        avgflag='A', long_name='MOSART floodplain water volume', &
-        ptr_rof=rtmCTL%inundwf, default='active')
-     call RtmHistAddfld (fname='FLOODPLAIN_DEPTH', units='m',  &
-        avgflag='A', long_name='MOSART floodplain water depth', &
-        ptr_rof=rtmCTL%inundhf, default='active')
-     call RtmHistAddfld (fname='FLOODPLAIN_FRACTION', units='1',  &
-        avgflag='A', long_name='MOSART floodplain water area fraction', &
-        ptr_rof=rtmCTL%inundff, default='active')
-     call RtmHistAddfld (fname='FLOODED_FRACTION', units='1',  &
-        avgflag='A', long_name='MOSART flooded water area fraction', &
-        ptr_rof=rtmCTL%inundffunit, default='active')
-    endif
-
 
     ! Print masterlist of history fields
 
@@ -307,7 +145,6 @@ contains
     ! Set mosart history fields as 1d poitner arrays
     !
     implicit none
-    integer :: idam, ig
     !-----------------------------------------------------------------------
 
     ! Currently only have two tracers
@@ -330,8 +167,6 @@ contains
     rtmCTL%dvolrdtocn_nt1(:) = rtmCTL%dvolrdtocn(:,1)
     rtmCTL%dvolrdtocn_nt2(:) = rtmCTL%dvolrdtocn(:,2)
 
-    rtmCTL%wr_nt1(:)         = rtmCTL%wr(:,1)
-
     rtmCTL%volr_nt1(:)       = rtmCTL%volr(:,1)
     rtmCTL%volr_nt2(:)       = rtmCTL%volr(:,2)
     rtmCTL%volr_mch(:)       = rtmCTL%wr(:,1)
@@ -344,45 +179,6 @@ contains
 
     rtmCTL%qgwl_nt1(:)       = rtmCTL%qgwl(:,1)
     rtmCTL%qgwl_nt2(:)       = rtmCTL%qgwl(:,2)
-
-    rtmCTL%qdto_nt1(:)       = rtmCTL%qdto(:,1)
-    rtmCTL%qdto_nt2(:)       = rtmCTL%qdto(:,2)
-
-    if(sediflag) then
-        rtmCTL%runofflnd_nt3(:)  = rtmCTL%runofflnd(:,3)
-        rtmCTL%runofflnd_nt4(:)  = rtmCTL%runofflnd(:,4)
-        rtmCTL%runofflnd_nt5(:)  = rtmCTL%runofflnd(:,5)
-        rtmCTL%runoffocn_nt3(:)  = rtmCTL%runoffocn(:,3)
-        rtmCTL%runoffocn_nt4(:)  = rtmCTL%runoffocn(:,4)
-        rtmCTL%runoffocn_nt5(:)  = rtmCTL%runoffocn(:,5)
-        rtmCTL%volr_nt3(:)       = rtmCTL%volr(:,3)
-        rtmCTL%volr_nt4(:)       = rtmCTL%volr(:,4)
-        rtmCTL%volr_nt5(:)       = rtmCTL%volr(:,5)
-        rtmCTL%qsur_nt3(:)       = rtmCTL%qsur(:,3)
-        rtmCTL%qsur_nt5(:)       = rtmCTL%qsur(:,5)
-        rtmCTL%qsur_nt6(:)       = rtmCTL%qsurE(:)
-    end if
-
-    if (wrmflag) then
-     StorWater%storageG = 0._r8
-     do idam = 1, ctlSubwWRM%localNumDam
-        ig = WRMUnit%icell(idam)
-        StorWater%storageG(ig) = StorWater%storage(idam)
-     enddo
-  endif
-
-    if (wrmflag) then
-          Tres%wres_t_nt1(:) = Tres%wres_t(:,1)
-          Tres%wres_t_nt2(:) = Tres%wres_t(:,2)
-          Tres%wres_t_nt3(:) = Tres%wres_t(:,3)
-          Tres%wres_t_nt4(:) = Tres%wres_t(:,4)
-          Tres%wres_t_nt5(:) = Tres%wres_t(:,5)
-          Tres%wres_nt1(:) = Tres%wres(:,1)
-          Tres%wres_nt2(:) = Tres%wres(:,2)
-          Tres%wres_nt3(:) = Tres%wres(:,3)
-          Tres%wres_nt4(:) = Tres%wres(:,4)
-          Tres%wres_nt5(:) = Tres%wres(:,5)
-    end if 
 
   end subroutine RtmHistFldsSet
 

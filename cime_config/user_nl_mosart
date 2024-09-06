@@ -6,11 +6,6 @@
 ! NOTE: if the xml variable ROF GRID in env_build.xml is set to 'null', then
 !        the RTM build-namelist will set do_rtm to .false. - and will ignore 
 !        any change below
-!Tips from Dong Peng: 1. the wrm setting can be changed via code change in WRM_subw_IO_mod,
-!                     which are cant be changed by namelist options;
-!                     2. the inund setting can be changed via code change in RTMmod, 
-!                     which options were not updated in namelist defination
-!                     3. just change the mosart settings via code changes in RTMmod or namelist options.
 !----------------------------------------------------------------------------------
 
 

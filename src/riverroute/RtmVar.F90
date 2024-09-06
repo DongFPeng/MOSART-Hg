@@ -27,16 +27,6 @@ module RtmVar
   integer, public :: nsrest = iundef                           ! Type of run
   logical, public :: brnch_retain_casename = .false.           ! true => allow case name to remain the same for branch run
                                                                ! by default this is not allowed
-
-  logical, public :: sediflag = .true.                 ! sediment model flag
-  logical, public :: rstraflag = .false.               ! reservoir stratification module flag
-  logical, public :: wrmflag = .false.                 ! water management model flag
-  logical, public :: inundflag = .false.               ! inundation model flag
-  logical, public :: heatflag = .false.                ! heat model flag   
-  integer, public :: ngeom   = 50                      ! Reservoir depth layers to calculate depth-area-storage relationship     
-  integer, public :: nlayers = 30                      ! Maximum number of reservoir layers for stratification
-  real,    public :: rinittemp = 283.15_r8             ! initial reservoir temperature
-
   logical, public :: noland = .false.                          ! true => no valid land points -- do NOT run
   character(len=32) , public :: decomp_option                  ! decomp option
   character(len=32) , public :: bypass_routing_option          ! bypass routing model method
