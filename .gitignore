@@ -33,3 +33,7 @@ scripts/testreporter.pl
 
 
 
+
+# NCO temporary files
+*.nc.pid*.tmp
+*.ncrcat.tmp
