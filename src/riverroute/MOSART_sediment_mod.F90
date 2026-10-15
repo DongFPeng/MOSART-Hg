@@ -291,7 +291,7 @@ MODULE MOSART_sediment_mod
     
             !==TODO: in current MOSART, the upstream/downstream relationship and mass balance are too difficult to track, hence assuming there is no sediment flux from downstream to upstream channel when backwater occurs
             if(Tctl%RoutingMethod == DW) then
-            do nt=nt_nmud,nt_nsan, nt_nphg
+            do nt=nt_nmud, nt_nphg
     
                 if(abs(TRunoff%rslp_energy(iunit)) < TINYVALUE_s) then ! no flow between current channel and downstream
                   TRunoff%erout(iunit,nt) = 0._r8

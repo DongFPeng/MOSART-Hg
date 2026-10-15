@@ -279,7 +279,7 @@ MODULE MOSART_physics_mod
          !       call res_trapping_t(iunit,nt_nphg)
          !       Tres%wres_t(iunit,nt_nphg) = Tres%wres_t(iunit,nt_nphg) + Tres%dwres_t(iunit,nt_nphg) * localDeltaT
                
-         !       do nt=nt_nmud,nt_nsan,nt_nphg
+         !       do nt=nt_nmud,nt_nphg
          !       !TRunoff%erowm_regf(iunit,nt) = TRunoff%erowm_regf(iunit,nt) + TRunoff%erlateral(iunit,nt)
          !       enddo
          !    end if                 
@@ -503,7 +503,7 @@ MODULE MOSART_physics_mod
        end do ! nt
 
         !! the treatment of mud and san is special since these two are interacting with each other
-       !do nt=nmud,nt_nsan, nt_nphg ! sediment transport
+       !do nt=nmud, nt_nphg ! sediment transport
        if (sediflag .and. TUnit%euler_calc(nt_nmud)) then
        do iunit=rtmCTL%begr,rtmCTL%endr
           if(TUnit%mask(iunit) > 0) then
@@ -578,7 +578,7 @@ MODULE MOSART_physics_mod
           !! Assume that reservoir regulation will only affect suspended load by changing the flow conditions, but do not directly affect sediment flux or storage
           if (sediflag .and. wrmflag) then
             localDeltaT = Tctl%DeltaT/Tctl%DLevelH2R
-            do nt=nt_nmud,nt_nsan, nt_nphg
+            do nt=nt_nmud, nt_nphg
                !TRunoff%erowm_regi(iunit,nt) = TRunoff%erowm_regi(iunit,nt) - TRunoff%erout(iunit,nt)
                TRunoff%flow(iunit,nt) = TRunoff%flow(iunit,nt) + TRunoff%erout(iunit,nt)
             enddo
@@ -603,7 +603,7 @@ MODULE MOSART_physics_mod
             !    Tres%wres(iunit,nt_nphg) = Tres%wres(iunit,nt_nphg) + Tres%dwres(iunit,nt_nphg) * localDeltaT
             !end if
 
-            do nt=nt_nmud,nt_nsan, nt_nphg
+            do nt=nt_nmud, nt_nphg
               !TRunoff%erowm_regf(iunit,nt) = TRunoff%erowm_regf(iunit,nt) - TRunoff%erout(iunit,nt)
               TRunoff%flow(iunit,nt) = TRunoff%flow(iunit,nt) - TRunoff%erout(iunit,nt)
             enddo
