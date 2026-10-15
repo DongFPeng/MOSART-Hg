@@ -125,13 +125,11 @@ For questions regarding MOSART-Hg, requests for reuse, or permission to use repo
 
 
 ～～～～～～～～～～～～～～～～～～～～～～～～～～～～～～～～
-# Model for Scale Adaptive River Transport
+## Upstream model
+MOSART-Hg is derived from the Model for Scale Adaptive River Transport (MOSART), with development and implementation informed by MOSART versions maintained within both the CESM and E3SM modeling systems.
 
+For the upstream model source code and documentation, see:
+CESM/ESCOMP MOSART: https://github.com/ESCOMP/MOSART
 
+E3SM MOSART implementation: https://github.com/E3SM-Project/E3SM
 
-The Model for Scale Adaptive River Transport, Mosart,
-is part of the Community Earth System Model.
-
-See the CESM web site for documentation and information:
-
-http://www.cesm.ucar.edu
