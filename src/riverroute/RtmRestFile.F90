@@ -380,7 +380,7 @@ contains
     !-----------------------------------------------------------------------
 
     do nv = 1,7
-    do nt = 1,nt_rtm
+    do nt = 1,5 !nt_rtm=5
 
        if (nv == 1) then
           vname = 'RTM_VOLR_'//trim(rtm_tracers(nt))
